@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "ticket-tracker"
+version = "0.1.0"
+description = "Ticket Tracker is a demo system that lets users upload receipt photos, processes them with OCR and an agent that structures the data into a database, and allows admins to query expenses in natural language."
+authors = [
+    "AlexBarria <alexbarria14@gmail.com>",
+    "ClaraBureu <clarabureumakianich@gmail.com>",
+    "maxit1992 <maxit1992@gmail.com>",
+    "Trinidad Monreal <trinidadmonreal@gmail.com>",
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
