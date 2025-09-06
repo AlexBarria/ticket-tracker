@@ -1,96 +1,83 @@
-# ticket-tracker
-Ticket Tracker is a demo system that lets users upload receipt photos, processes them with OCR and an agent that structures the data into a database, and allows admins to query expenses in natural language.
+# Ticket Tracker 🎟️
 
-This project is built using Python, FastAPI, and AI agents, and is designed to be containerized with Docker.
+Ticket Tracker is a comprehensive system that allows users to upload receipt photos, which are then processed by an OCR model and an AI agent to structure the data into a database. It also provides an interface for administrators to query expense data using natural language.
+
+This project is built on a **microservices architecture**, with services written in Python (using FastAPI and Streamlit). The entire stack is containerized and orchestrated using Docker and Docker Compose.
 
 ---
 
 ## 🚀 Getting Started
 
-Follow these instructions to get the project set up and running on your local machine.
+Follow these instructions to get the entire microservices stack running on your local machine.
 
 ### Prerequisites
 
-* Python 3.10+
-* [Poetry](https://python-poetry.org/docs/#installation) for dependency management.
-* [Docker](https://www.docker.com/products/docker-desktop/) and Docker Compose (for running the database and other services).
+* **Docker** and **Docker Compose**: Ensure you have Docker Desktop (or Docker Engine with the Compose plugin) installed and running. You can download it [here](https://www.docker.com/products/docker-desktop/).
 
 ### Installation & Setup
 
 1.  **Clone the repository:**
     ```bash
     git clone <your-repository-url>
-    cd ticket-tracker
+    cd TICKET-TRACKER
     ```
 
-2.  **Install dependencies:**
-    Poetry will create a virtual environment and install all the packages defined in `pyproject.toml`.
-    ```bash
-    poetry install
-    ```
-
-3.  **Configure environment variables:**
-    Create a `.env` file in the root directory by copying the example file. You should create a `.env.example` to guide other developers.
+2.  **Configure environment variables:**
+    The project uses a `.env` file to manage all secrets and configurations. Start by copying the example file.
     ```bash
     cp .env.example .env
     ```
-    Now, edit the `.env` file and add your credentials (Database URL, OpenAI API Key, S3 bucket info, etc.).
+    Now, **edit the `.env` file** and add your actual credentials for the required services (OpenAI API Key, Auth0 details, etc.).
 
-4.  **Start services with Docker:**
-    This command will start the Postgres database and any other services defined in `docker-compose.yml`.
+3.  **Build and Run the Services:**
+    This single command will build the container images for each microservice and start the entire application stack in detached mode.
     ```bash
-    docker-compose up -d
+    docker-compose up --build -d
     ```
+    The initial build might take a few minutes as it downloads base images and installs dependencies for each service.
 
-5.  **Run the application:**
-    Use `uvicorn` to run the FastAPI server. The `--reload` flag will automatically restart the server when you make code changes.
-    ```bash
-    poetry run uvicorn src.ticket_tracker.main:app --reload
-    ```
-    The API will be available at `http://127.0.0.1:8000`.
+### ✅ Accessing the Services
+
+Once all the containers are up and running, you can access the different parts of the system at the following URLs:
+
+| Service               | URL                               | Description                                      |
+| --------------------- | --------------------------------- | ------------------------------------------------ |
+| **Admin UI (Streamlit)** | `http://localhost:8501`           | The main web interface for admin queries.        |
+| **Agent 2 API Docs** | `http://localhost:8003/docs`      | Swagger UI for the RAG agent API.                |
+| **Agent 1 API Docs** | `http://localhost:8002/docs`      | Swagger UI for the Formatter agent API.          |
+| **OCR Service API Docs** | `http://localhost:8001/docs`      | Swagger UI for the OCR service API.              |
+| **MLflow Tracking UI** | `http://localhost:5000`           | UI for tracking agent runs and experiments.      |
+| **MinIO Console (S3)** | `http://localhost:9001`           | Web console for browsing the S3 buckets.         |
 
 ---
 
 ## 📂 Project Structure
 
-The project follows a modern, scalable structure, separating concerns into distinct modules.
+This project follows a microservices architecture. Each top-level directory represents a self-contained service with its own `Dockerfile` and logic. The `docker-compose.yml` file at the root orchestrates how these services build, run, and communicate.
 
 ```
-ticket-tracker/
-├── .env                  # (You create this) Holds secret keys & config
+/TICKET-TRACKER
+├── .env                  # Holds all secrets & configurations
 ├── .gitignore
-├── Dockerfile            # Defines the application's container image
-├── docker-compose.yml    # Orchestrates services (API, DB, etc.)
-├── pyproject.toml        # Poetry's dependency and project manager
-├── README.md             # This file
-├── notebooks/            # Jupyter notebooks for experimentation
-├── scripts/              # One-off utility scripts (e.g., db setup)
-├── tests/                # All application tests
-└── src/
-    └── ticket_tracker/
-        ├── main.py       # FastAPI app entry point
-        ├── api/          # API layer (endpoints and routing)
-        ├── agents/       # Core business logic and workflows
-        ├── core/         # Project config and Pydantic schemas
-        ├── db/           # Database models, sessions, and CRUD
-        ├── services/     # Wrappers for external services (OCR, LLM, S3)
-        └── utils/        # Helper functions
+├── agent-1-formatter/    # Microservice: Structures OCR text into JSON
+├── agent-2-rag/          # Microservice: Answers admin queries using RAG
+├── minio/                # Configuration and data for MinIO (S3 storage)
+├── ocr-service/          # Microservice: Extracts raw text from images
+├── postgres/             # Configuration and data for PostgreSQL DB
+├── ui/                   # Microservice: Streamlit frontend for admins
+├── docker-compose.yml    # The master file to build and run all services
+├── folders_creation.py   # (Utility script) The generator you used
+├── pyproject.toml        # Project metadata (can be used for dev tools)
+└── README.md             # This file
 ```
 
-### Core Directories Explained
+### Core Services Explained
 
-* `src/ticket_tracker/`: The main Python package for the application.
-    * **`api/`**: Contains all FastAPI code. The `endpoints` sub-directory defines the actual API routes for users (`receipts.py`) and admins (`admin.py`).
-    * **`agents/`**: The brain of the application. This is where the multi-step logic from the architecture diagram lives.
-        * `receipt_processing_agent.py`: Implements **Agent 1** for the OCR -> LLM -> DB pipeline.
-        * `query_analysis_agent.py`: Implements **Agent 2** for the RAG-based query system.
-    * **`services/`**: Provides clean interfaces to external systems. For example, `ocr.py` might contain a function that takes an image and returns text, hiding the specific library used. `llm.py` handles prompt formatting and calls to the OpenAI API.
-    * **`db/`**: Handles all database interactions.
-        * `models.py`: Defines the database tables using SQLAlchemy ORM.
-        * `crud.py`: Contains reusable functions for creating, reading, updating, and deleting data (e.g., `create_receipt(...)`).
-    * **`core/`**: Holds application-wide code.
-        * `config.py`: Manages settings and secrets loaded from the `.env` file.
-        * `schemas.py`: Defines the Pydantic data models used for API validation and data structuring.
-* `tests/`: Contains unit and integration tests for the application.
-* `scripts/`: Useful for operational tasks like seeding your database with initial data.
-* `notebooks/`: A sandbox for experimenting with models, prompts, and data before formalizing the code into the `src` directory.
+* `docker-compose.yml`: The central orchestrator. It defines all services, how they connect, which ports they expose, and which volumes they use for data persistence.
+* `ui/`: A **Streamlit** application that serves as the graphical user interface for administrators to ask questions. It communicates with `agent-2-rag`.
+* `agent-1-formatter/`: A **FastAPI** service that receives raw text from the OCR service, uses an LLM (via OpenAI) to structure it into a predefined JSON format, and saves it to the PostgreSQL database.
+* `agent-2-rag/`: A **FastAPI** service that implements the Retrieval-Augmented Generation (RAG) logic. It receives a natural language question from the UI, translates it into a SQL query, fetches data from the database, and generates a human-readable answer.
+* `ocr-service/`: A **FastAPI** service that exposes an OCR model. It accepts an image file and returns the extracted raw text.
+* `postgres/`: Contains the configuration for the PostgreSQL database, including an `init-db.sql` script that creates the necessary tables on the first run. Data is persisted in a Docker volume.
+* `minio/`: Configuration for the MinIO object storage service, which acts as an S3-compatible server for storing the original receipt images.
+* **MLflow**: Defined within `docker-compose.yml` but without a dedicated folder. It's configured to run using the official Docker image, with Postgres as its backend store and MinIO as its artifact store.
