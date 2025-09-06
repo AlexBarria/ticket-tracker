@@ -1,0 +1,130 @@
+# This docker-compose file orchestrates all the microservices for the Ticket Tracker app.
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+      - ./postgres/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio_s3
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"  # API Port
+      - "9001:9001"  # Console Port
+    volumes:
+      - ./minio/data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  create-minio-bucket:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc mb myminio/${MINIO_BUCKET} || true;
+      /usr/bin/mc policy set public myminio/${MINIO_BUCKET};
+      exit 0;
+      "
+
+  mlflow:
+    image: python:3.10  # Use a python image to install dependencies
+    container_name: mlflow_server
+    command: >
+      sh -c "pip install mlflow boto3 psycopg2-binary &&
+             mlflow server \
+             --host 0.0.0.0 \
+             --port 5000 \
+             --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mlflow_db \
+             --default-artifact-root s3://${MINIO_BUCKET}/mlflow-artifacts"
+    ports:
+      - "5000:5000"
+    environment:
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+    depends_on:
+      - postgres
+      - create-minio-bucket
+    restart: unless-stopped
+
+  ocr-service:
+    build: ./ocr-service
+    container_name: ocr_service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./ocr-service:/app
+    restart: unless-stopped
+
+  agent-1-formatter:
+    build: ./agent-1-formatter
+    container_name: agent_1
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./agent-1-formatter:/app
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  agent-2-rag:
+    build: ./agent-2-rag
+    container_name: agent_2
+    ports:
+      - "8003:8000"
+    volumes:
+      - ./agent-2-rag:/app
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  ui:
+    build: ./ui
+    container_name: streamlit_ui
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./ui:/app
+    environment:
+      - AGENT_2_API_URL=http://agent-2-rag:8000
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
+    depends_on:
+      - agent-2-rag
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
