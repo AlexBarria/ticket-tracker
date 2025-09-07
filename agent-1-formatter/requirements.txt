@@ -8,3 +8,4 @@ sqlalchemy
 minio
 PyJWT
 python-multipart
+requests
