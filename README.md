@@ -104,13 +104,14 @@ This project follows a microservices architecture. Each top-level directory repr
 * `docker-compose.yml`: The central orchestrator. It defines all services, their networks, ports, and volumes for data persistence.
 * `ui/`: A **Streamlit** application serving as the frontend. It handles user authentication via Auth0 and provides views based on user roles (a file uploader for `client`s, a query dashboard for `admin`s). When a file is uploaded, the UI sends the file and the user's **`id_token`** to the Agent 1 service for processing.
 * `agent-1-formatter/`: A **FastAPI** service that acts as the primary ingestion and workflow orchestrator. Its responsibilities include:
-    1.  Receiving uploaded files and an `id_token` from the UI.
+    1.  Receiving an uploaded file and `id_token` from the UI.
     2.  Validating the token to get the user's unique ID.
     3.  Uploading the original receipt image to a user-specific folder in **MinIO**.
-    4.  (Future) Orchestrating calls to the `ocr-service` and structuring the data.
-    5.  (Future) Saving the final structured data to the **PostgreSQL** database.
+    4.  Sending the same image to the `ocr-service` to get the raw text.
+    5.  (Future) Using an LLM to structure the extracted text based on the OCR output.
+    6.  (Future) Saving the final structured data to the **PostgreSQL** database.
 * `agent-2-rag/`: A **FastAPI** service that implements the Retrieval-Augmented Generation (RAG) logic. It receives a natural language question from the UI, translates it into a SQL query, fetches data from the database, and generates a human-readable answer.
-* `ocr-service/`: A **FastAPI** service that exposes an OCR model. It's a specialized "tool" service whose only job is to accept an image file and return the extracted raw text.
+* `ocr-service/`: A **FastAPI** service that exposes a text recognition model. It's a specialized "tool" service whose only job is to accept an image file and return the extracted raw text, preserving line breaks. It uses the **EasyOCR** library to perform this task.
 * `postgres/`: Contains the configuration for the PostgreSQL database, including an `init-db.sql` script that creates the necessary tables on the first run.
 * `minio/`: Configuration for the MinIO object storage service, which acts as an S3-compatible server for storing the original receipt images.
 * **MLflow**: Defined within `docker-compose.yml`. It's configured to run using the official Docker image, with Postgres as its backend store and MinIO as its artifact store for experiment tracking.
