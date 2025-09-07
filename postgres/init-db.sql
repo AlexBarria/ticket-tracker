@@ -6,18 +6,13 @@ CREATE TABLE IF NOT EXISTS tickets (
     merchant_name VARCHAR(255),
     transaction_date DATE,
     total_amount NUMERIC(10, 2),
-    items JSONB, -- To store a list of items, prices, etc.
+    items JSONB,
     category VARCHAR(100),
-    image_s3_path VARCHAR(512),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    user_id VARCHAR(255) -- To associate the ticket with a user
+    s3_path VARCHAR(512),
+    user_id VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- You can add more tables or initial data if needed.
-INSERT INTO tickets (merchant_name, transaction_date, total_amount) VALUES
-('Example Restaurant', '2025-07-15', 50.00),
-('Another Cafe', '2025-07-20', 50.00);
-
--- Note: MLflow requires its own database. The docker-compose setup
--- creates 'mlflow_db' for it, and MLflow manages its own schema.
--- This file is only for the 'tickets_db' application database.
+-- You can add more data if needed, but it's optional
+INSERT INTO tickets (merchant_name, transaction_date, total_amount, category, s3_path, user_id) VALUES
+('Example Restaurant', '2025-07-15', 50.00, 'Restaurant', 's3://bucket/user/file.jpg', 'user_id_123');
