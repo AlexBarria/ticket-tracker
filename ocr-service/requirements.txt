@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
-pydantic
-python-dotenv
-# Add your preferred OCR library, e.g.:
-# easyocr
-# pytesseract
+python-multipart
+easyocr
+torch
+torchvision
+streamlit
