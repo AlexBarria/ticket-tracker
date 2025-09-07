@@ -46,7 +46,7 @@ Once all the containers are up and running, you can access the different parts o
 | **Agent 2 API Docs** | `http://localhost:8003/docs`      | Swagger UI for the RAG agent API.                |
 | **Agent 1 API Docs** | `http://localhost:8002/docs`      | Swagger UI for the Formatter agent API.          |
 | **OCR Service API Docs** | `http://localhost:8001/docs`      | Swagger UI for the OCR service API.              |
-| **MLflow Tracking UI** | `http://localhost:5000`           | UI for tracking agent runs and experiments.      |
+| **MLflow Tracking UI** | `http://localhost:5001`           | UI for tracking agent runs and experiments.      |
 | **MinIO Console (S3)** | `http://localhost:9001`           | Web console for browsing the S3 buckets.         |
 
 ---
