@@ -48,9 +48,18 @@ else:
     id_token = token_dict.get("id_token")
     
     try:
-        # Decode the ID token without verifying the signature for this simple display.
+        # Decode the ID token...
         payload = jwt.decode(id_token, options={"verify_signature": False})
-        user_name = payload.get("name", "User") # Extract the name from the JWT payload
+        user_name = payload.get("name", "User")
+
+        # Define the namespace used in the Auth0 Action
+        namespace = 'https://ticket-tracker.com'
+        # Extract roles from the custom claim
+        user_roles = payload.get(f'{namespace}/roles', [])
+        
+        # Store roles in the session state
+        st.session_state['roles'] = user_roles
+
     except jwt.PyJWTError as e:
         user_name = "User"
         st.error(f"Could not decode user token: {e}")

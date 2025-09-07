@@ -7,7 +7,13 @@ st.set_page_config(page_title="Upload Ticket", layout="wide")
 # Check if the user is logged in
 if 'token' not in st.session_state:
     st.warning("Please log in to access this page.")
-    st.stop() # Stop further execution of the page
+    st.stop()
+
+# Check for the correct role to access the page
+user_roles = st.session_state.get('roles', [])
+if 'client' not in user_roles and 'admin' not in user_roles:
+    st.error("🚫 You do not have permission to view this page.")
+    st.stop()
 
 # --- Page Content ---
 st.title("📄 Upload Your Receipt")
