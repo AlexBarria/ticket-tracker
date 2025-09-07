@@ -1,5 +1,7 @@
 # ui/app/pages/1_Client_Uploader.py
 import streamlit as st
+import requests
+import os
 
 st.set_page_config(page_title="Upload Ticket", layout="wide")
 
@@ -25,22 +27,25 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    # Display the uploaded image
     st.image(uploaded_file, caption="Uploaded Receipt.", use_column_width=True)
     
     if st.button("Process Receipt"):
-        with st.spinner("Processing your receipt... This may take a moment."):
-            # --- Placeholder for API call ---
-            # In the future, we will send this file to our OCR service API
-            # For example:
-            # files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
-            # response = requests.post("http://ocr-service:8000/scan", files=files)
-            # if response.status_code == 200:
-            #     st.success("Receipt processed successfully!")
-            # else:
-            #     st.error("Failed to process the receipt.")
+        with st.spinner("Uploading and processing..."):
+            # Get the ID token from the session state, which is a JWT
+            id_token = st.session_state['token']['id_token']
             
-            # Mock success for now
-            import time
-            time.sleep(2)
-            st.success("Receipt processed successfully!")
+            # Prepare the request to Agent 1
+            agent_1_url = "http://agent-1-formatter:8000/upload-receipt/"
+            headers = {"Authorization": f"Bearer {id_token}"}
+            files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
+            
+            try:
+                response = requests.post(agent_1_url, headers=headers, files=files)
+                
+                if response.status_code == 200:
+                    st.success("Receipt processed successfully!")
+                    st.json(response.json())
+                else:
+                    st.error(f"Error processing receipt: {response.text}")
+            except requests.exceptions.RequestException as e:
+                st.error(f"Could not connect to the processing service: {e}")
