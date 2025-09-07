@@ -59,11 +59,11 @@ services:
       sh -c "pip install mlflow boto3 psycopg2-binary &&
              mlflow server \
              --host 0.0.0.0 \
-             --port 5000 \
+             --port 5001 \
              --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mlflow_db \
              --default-artifact-root s3://${MINIO_BUCKET}/mlflow-artifacts"
     ports:
-      - "5000:5000"
+      - "5001:5001"
     environment:
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
@@ -116,11 +116,12 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - ./ui:/app
+      - ./ui/app:/app
     environment:
       - AGENT_2_API_URL=http://agent-2-rag:8000
       - AUTH0_DOMAIN=${AUTH0_DOMAIN}
       - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
     depends_on:
       - agent-2-rag
     restart: unless-stopped
