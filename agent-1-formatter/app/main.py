@@ -1,9 +1,11 @@
 # agent-1-formatter/app/main.py
 import os
+import io
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from minio import Minio
 import jwt
+import requests
 
 # --- MinIO Configuration ---
 minio_client = Minio(
@@ -38,49 +40,53 @@ def read_root():
     return {"status": "ok", "service": "Agent 1 - Formatter"}
 
 @app.post("/upload-receipt/")
-def upload_receipt(
+async def upload_receipt(
     file: UploadFile = File(...),
     user_id: str = Depends(get_current_user)
 ):
     """
-    Receives a receipt image, uploads it to a user-specific folder in MinIO,
-    and then (in the future) triggers OCR and formatting.
+    Receives a receipt image, uploads it to MinIO, calls the OCR service,
+    and then (in the future) formats the data.
     """
     try:
-        # 1. Upload to MinIO in a user-specific folder
-        # Object name will be: "auth0|user_id_123/receipt_name.jpg"
-        object_name = f"{user_id}/{file.filename}"
+        # We need to read the file content to send it to multiple services.
+        # Reading it into memory is okay for receipts, but for large files,
+        # you'd stream it differently.
+        file_content = await file.read()
         
-        # Ensure the bucket exists
-        found = minio_client.bucket_exists(MINIO_BUCKET)
-        if not found:
-            raise HTTPException(status_code=500, detail=f"MinIO bucket '{MINIO_BUCKET}' does not exist.")
-
+        # 1. Upload to MinIO
+        object_name = f"{user_id}/{file.filename}"
         minio_client.put_object(
             bucket_name=MINIO_BUCKET,
             object_name=object_name,
-            data=file.file,
-            length=-1, # Auto-detect length
-            part_size=10*1024*1024, # Required for stream uploads
+            data=io.BytesIO(file_content), # Use io.BytesIO to treat bytes as a file-like object
+            length=len(file_content),
             content_type=file.content_type
         )
-        
         s3_path = f"s3://{MINIO_BUCKET}/{object_name}"
 
-        # 2. (Future work) Call OCR service with the uploaded file
-        # text = call_ocr_service(file)
-
-        # 3. (Future work) Use Agent 1 logic to format the text
-        # structured_data = format_text(text)
+        # 2. Call OCR service with the same file content
+        ocr_service_url = "http://ocr-service:8000/scan"
+        files = {"file": (file.filename, file_content, file.content_type)}
         
-        # 4. (Future work) Save structured_data to PostgreSQL
-        # save_to_db(structured_data, s3_path)
+        extracted_text = ""
+        try:
+            ocr_response = requests.post(ocr_service_url, files=files)
+            ocr_response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+            extracted_text = ocr_response.json().get("text")
+        except requests.exceptions.RequestException as e:
+            # If the OCR service is down, we can still proceed but log the error
+            print(f"Could not connect to OCR service: {e}")
+            # Optionally, raise an HTTPException if OCR is critical
+            raise HTTPException(status_code=503, detail="OCR service is unavailable")
+
+        # 3. (Future work) Format the text and save to DB
+        # ...
 
         return {
-            "message": "File uploaded successfully",
-            "filename": file.filename,
-            "user_id": user_id,
-            "s3_path": s3_path
+            "message": "File uploaded and processed by OCR",
+            "s3_path": s3_path,
+            "extracted_text": extracted_text
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
