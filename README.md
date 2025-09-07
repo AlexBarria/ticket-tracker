@@ -79,6 +79,46 @@ The "Logout" button performs a federated logout. This means it terminates the se
 
 ---
 
+## 🔩 For Developers: Managing the Database Schema
+
+During development, the structure of the database may change (e.g., adding a new column to the `tickets` table). Because the database data is persisted locally in the `postgres/data` directory, these changes won't be applied automatically.
+
+If you make a change to the database schema in `agent-1-formatter/app/models.py` or `postgres/init--db.sql`, you must **reset the database** for the changes to take effect.
+
+**To reset the database:**
+
+1.  Stop all running containers:
+    ```bash
+    docker-compose down
+    ```
+2.  Delete the local PostgreSQL data directory:
+    ```bash
+    rm -rf postgres/data
+    ```
+3.  Restart the application. The `init-db.sql` script will run again and create the tables with the new schema.
+    ```bash
+    docker-compose up -d
+    ```
+
+---
+### Database Schema: The `tickets` Table
+
+All structured receipt information is stored in the `tickets` table. Here is a description of its main fields:
+
+| Column | Data Type | Description |
+| :--- | :--- | :--- |
+| `id` | SERIAL (Primary Key) | A unique identifier for each ticket record. |
+| `merchant_name` | VARCHAR(255) | The name of the store or business, extracted by the LLM. |
+| `transaction_date`| DATE | The date of the transaction (e.g., '2025-09-07'). |
+| `total_amount` | NUMERIC(10, 2) | The final total amount of the purchase. |
+| `items` | JSONB | A JSON array containing the list of purchased items. Each item is an object with a `description` and a `price`. |
+| `category` | VARCHAR(100) | The expense category (e.g., 'Groceries', 'Restaurant') as determined by the LLM. |
+| `s3_path` | VARCHAR(512) | The full S3 path to the original receipt image stored in MinIO. |
+| `user_id` | VARCHAR(255) | The unique ID of the user (from Auth0) who uploaded the ticket. |
+| `created_at` | TIMESTAMP | The timestamp when the record was inserted into the database. |
+
+---
+
 ## 📂 Project Structure
 
 This project follows a microservices architecture. Each top-level directory represents a self-contained service with its own `Dockerfile` and logic. The `docker-compose.yml` file at the root orchestrates how these services build, run, and communicate.
@@ -102,15 +142,16 @@ This project follows a microservices architecture. Each top-level directory repr
 ### Core Services Explained
 
 * `docker-compose.yml`: The central orchestrator. It defines all services, their networks, ports, and volumes for data persistence.
-* `ui/`: A **Streamlit** application serving as the frontend. It handles user authentication via Auth0 and provides views based on user roles (a file uploader for `client`s, a query dashboard for `admin`s). When a file is uploaded, the UI sends the file and the user's **`id_token`** to the Agent 1 service for processing.
+* `ui/`: A **Streamlit** application serving as the frontend. It handles user authentication via Auth0 and provides views based on user roles. When a file is uploaded, the UI sends the file and the user's **`id_token`** to the Agent 1 service.
 * `agent-1-formatter/`: A **FastAPI** service that acts as the primary ingestion and workflow orchestrator. Its responsibilities include:
     1.  Receiving an uploaded file and `id_token` from the UI.
     2.  Validating the token to get the user's unique ID.
     3.  Uploading the original receipt image to a user-specific folder in **MinIO**.
-    4.  Sending the same image to the `ocr-service` to get the raw text.
-    5.  (Future) Using an LLM to structure the extracted text based on the OCR output.
-    6.  (Future) Saving the final structured data to the **PostgreSQL** database.
-* `agent-2-rag/`: A **FastAPI** service that implements the Retrieval-Augmented Generation (RAG) logic. It receives a natural language question from the UI, translates it into a SQL query, fetches data from the database, and generates a human-readable answer.
+    4.  Calling the `ocr-service` to get the raw text.
+    5.  Using an OpenAI LLM (e.g., GPT-4o) to parse the raw text into a structured JSON object.
+    6.  Validating the LLM's output against a Pydantic schema.
+    7.  Saving the final structured data to the **PostgreSQL** database.
+* `agent-2-rag/`: (Future) A **FastAPI** service that will implement the Retrieval-Augmented Generation (RAG) logic. It will receive a natural language question, translate it into a SQL query, fetch data from the database, and generate a human-readable answer.
 * `ocr-service/`: A **FastAPI** service that exposes a text recognition model. It's a specialized "tool" service whose only job is to accept an image file and return the extracted raw text, preserving line breaks. It uses the **EasyOCR** library to perform this task.
 * `postgres/`: Contains the configuration for the PostgreSQL database, including an `init-db.sql` script that creates the necessary tables on the first run.
 * `minio/`: Configuration for the MinIO object storage service, which acts as an S3-compatible server for storing the original receipt images.
