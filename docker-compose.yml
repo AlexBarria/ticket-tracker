@@ -86,7 +86,7 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - ./ocr-service:/app
+      - ./ocr-service/app:/app
     restart: unless-stopped
     networks:
       - ticket-tracker-net
