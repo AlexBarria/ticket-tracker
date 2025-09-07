@@ -43,14 +43,15 @@ services:
   create-minio-bucket:
     image: minio/mc
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
-      /usr/bin/mc mb myminio/${MINIO_BUCKET} || true;
-      /usr/bin/mc policy set public myminio/${MINIO_BUCKET};
-      exit 0;
-      "
+        /bin/sh -c "
+        /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+        /usr/bin/mc mb myminio/${MINIO_BUCKET} --ignore-existing;
+        /usr/bin/mc policy set public myminio/${MINIO_BUCKET};
+        exit 0;
+        "
 
   mlflow:
     image: python:3.10  # Use a python image to install dependencies
