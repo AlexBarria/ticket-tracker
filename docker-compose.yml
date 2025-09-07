@@ -20,6 +20,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ticket-tracker-net
 
   minio:
     image: minio/minio:latest
@@ -39,6 +41,8 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+    networks:
+      - ticket-tracker-net
 
   create-minio-bucket:
     image: minio/mc
@@ -73,6 +77,8 @@ services:
       - postgres
       - create-minio-bucket
     restart: unless-stopped
+    networks:
+      - ticket-tracker-net
 
   ocr-service:
     build: ./ocr-service
@@ -82,6 +88,8 @@ services:
     volumes:
       - ./ocr-service:/app
     restart: unless-stopped
+    networks:
+      - ticket-tracker-net
 
   agent-1-formatter:
     build: ./agent-1-formatter
@@ -89,13 +97,19 @@ services:
     ports:
       - "8002:8000"
     volumes:
-      - ./agent-1-formatter:/app
+      - ./agent-1-formatter/app:/app
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - MINIO_BUCKET=${MINIO_BUCKET}
     depends_on:
       - postgres
     restart: unless-stopped
+    networks:
+      - ticket-tracker-net
 
   agent-2-rag:
     build: ./agent-2-rag
@@ -110,6 +124,8 @@ services:
     depends_on:
       - postgres
     restart: unless-stopped
+    networks:
+      - ticket-tracker-net
 
   ui:
     build: ./ui
@@ -126,7 +142,13 @@ services:
     depends_on:
       - agent-2-rag
     restart: unless-stopped
+    networks:
+      - ticket-tracker-net
 
 volumes:
   postgres_data:
   minio_data:
+
+networks:
+  ticket-tracker-net:
+    driver: bridge
