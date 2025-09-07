@@ -51,6 +51,34 @@ Once all the containers are up and running, you can access the different parts o
 
 ---
 
+## 🖥️ User Interface & Authentication
+
+The primary interaction with the application is through a web user interface built with Streamlit, accessible at `http://localhost:8501`.
+
+### Authentication Flow
+
+Access to the application is protected and managed by **Auth0**, a robust and secure identity service.
+
+1.  **Login**: Upon accessing the UI, you will be presented with a "Login" button. Clicking it will redirect you to a secure login page hosted by Auth0.
+2.  **Credentials**: You must enter the email and password associated with your user account.
+3.  **Redirection**: Once your credentials are validated, you will be redirected back to the application with an active session.
+
+### Roles & Permissions
+
+The application uses a role-based access control (RBAC) system to determine which pages and features each user can see. Roles are assigned by a system administrator in the Auth0 dashboard.
+
+* 👤 **`client` Role**: This role is designed for users who only need to upload receipts.
+    * **Access**: They can only see the **"Client Uploader"** page to upload their ticket images.
+
+* 👑 **`admin` Role**: This role has full access to all application features.
+    * **Full Access**: They can see both the **"Client Uploader"** page and the **"Admin Dashboard"**, which allows them to make natural language queries about expense data.
+
+### Logout Process
+
+The "Logout" button performs a federated logout. This means it terminates the session in both the Streamlit application and Auth0, ensuring your account is completely and securely logged out. When you try to access the application again, you will be required to re-enter your credentials.
+
+---
+
 ## 📂 Project Structure
 
 This project follows a microservices architecture. Each top-level directory represents a self-contained service with its own `Dockerfile` and logic. The `docker-compose.yml` file at the root orchestrates how these services build, run, and communicate.
