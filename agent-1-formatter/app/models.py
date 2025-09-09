@@ -6,7 +6,7 @@ class Ticket(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     merchant_name = Column(String, index=True)
-    transaction_date = Column(Date)
+    transaction_date = Column(Date, nullable=True)
     total_amount = Column(Float)
     category = Column(String, index=True)
     items = Column(JSON) # To store the list of items

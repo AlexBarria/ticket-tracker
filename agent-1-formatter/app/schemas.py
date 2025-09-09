@@ -8,7 +8,7 @@ class Item(BaseModel):
 
 class TicketCreate(BaseModel):
     merchant_name: str
-    transaction_date: date
+    transaction_date: Optional[date] = None
     total_amount: float
     category: str
     items: List[Item]
