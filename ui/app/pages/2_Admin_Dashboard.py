@@ -1,4 +1,5 @@
 # ui/app/pages/2_Admin_Dashboard.py
+import requests
 import streamlit as st
 
 st.set_page_config(page_title="Admin Dashboard", layout="wide")
@@ -24,19 +25,19 @@ question = st.text_input("For example: 'How much did we spend on restaurants in 
 if st.button("Get Answer"):
     if question:
         with st.spinner("Searching for an answer..."):
-            # --- Placeholder for API call ---
-            # In the future, we will make a request to the Agent 2 API
-            # import requests
-            # headers = {'Authorization': f'Bearer {st.session_state["token"]["access_token"]}'}
-            # response = requests.post("http://agent-2-rag:8000/ask", json={"query": question}, headers=headers)
-            # if response.status_code == 200:
-            #     st.success(f"**Answer:** {response.json().get('answer')}")
-            # else:
-            #     st.error("Failed to get an answer from the agent.")
-            
-            # Mock response for now
-            import time
-            time.sleep(2)
-            st.success("**Answer:** User A spent $100 in restaurants in July 2025, across 3 receipts.")
+            # Get the ID token from the session state, which is a JWT
+            id_token = st.session_state['token']['id_token']
+
+            # Prepare the request to Agent 2
+            agent_2_url = "http://agent-2-rag:8000/ask"
+            headers = {"Authorization": f"Bearer {id_token}"}
+            try:
+                response = requests.post(agent_2_url, json={"query": question}, headers=headers)
+                if response.status_code == 200:
+                    st.success(f"**Answer:** {response.json().get('answer')}")
+                else:
+                    st.error("Failed to get an answer from the agent.")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
     else:
         st.warning("Please enter a question.")

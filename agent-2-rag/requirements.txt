@@ -1,7 +1,10 @@
 fastapi
 uvicorn[standard]
 pydantic
+PyJWT
 python-dotenv
+langgraph
 openai
+langchain-openai
 psycopg2-binary
 sqlalchemy

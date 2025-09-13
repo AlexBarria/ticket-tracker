@@ -18,7 +18,7 @@ Do not include comments or any text before/after the query.
 {schema}
 
 ### RETURN FORMAT
-Return ONLY the plain SQL query ready to be executed, no markdown, no prose, no code fences.
+Return ONLY the plain SQL query ready to be executed, DO NOT ADD markdown or code snippets decorators.
 """
 
 _USER_PROMPT = """
