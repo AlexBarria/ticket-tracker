@@ -1,12 +1,20 @@
 # agent-1-formatter/app/main.py
 import os
 import io
+import logging
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from minio import Minio
 from sqlalchemy.orm import Session
 import jwt
 import requests
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
 from . import crud, models, schemas, llm_processor
 from .database import SessionLocal, engine
@@ -16,13 +24,29 @@ from .database import SessionLocal, engine
 models.Base.metadata.create_all(bind=engine)
 
 # --- MinIO Configuration ---
+logger = logging.getLogger(__name__)
+
 minio_client = Minio(
     os.getenv("MINIO_ENDPOINT"),
     access_key=os.getenv("MINIO_ACCESS_KEY"),
     secret_key=os.getenv("MINIO_SECRET_KEY"),
-    secure=False # Set to True if using HTTPS
+    secure=False  # Set to True if using HTTPS
 )
 MINIO_BUCKET = os.getenv("MINIO_BUCKET")
+
+# Ensure the bucket exists at startup (best-effort)
+if not MINIO_BUCKET:
+    logger.error("MINIO_BUCKET environment variable is not set")
+else:
+    try:
+        if not minio_client.bucket_exists(MINIO_BUCKET):
+            minio_client.make_bucket(MINIO_BUCKET)
+            logger.info(f"Created MinIO bucket '{MINIO_BUCKET}'")
+        else:
+            logger.info(f"MinIO bucket '{MINIO_BUCKET}' already exists")
+    except Exception as e:
+        # Do not crash the app on startup; endpoint will attempt again on demand
+        logger.warning(f"Could not verify/create MinIO bucket '{MINIO_BUCKET}': {e}")
 
 # --- Auth Configuration ---
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -55,6 +79,23 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 app = FastAPI(title="Agent 1 - Formatter & Uploader")
 
 
+def _setup_tracing(app: FastAPI) -> None:
+    try:
+        service_name = os.getenv("OTEL_SERVICE_NAME", "agent-1-formatter")
+        endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://phoenix:4317")
+        provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
+        exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True)
+        provider.add_span_processor(BatchSpanProcessor(exporter))
+        trace.set_tracer_provider(provider)
+        FastAPIInstrumentor().instrument_app(app)
+        RequestsInstrumentor().instrument()
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Tracing setup failed: {e}")
+
+
+_setup_tracing(app)
+
+
 @app.get("/")
 def read_root():
     return {"status": "ok", "service": "Agent 1 - Formatter"}
@@ -70,7 +111,20 @@ async def upload_receipt(
     
     # 1. Upload original image to MinIO
     object_name = f"{user_id}/{file.filename}"
-    minio_client.put_object(MINIO_BUCKET, object_name, io.BytesIO(file_content), len(file_content), content_type=file.content_type)
+    # Ensure bucket exists in case startup check raced with init job
+    if not minio_client.bucket_exists(MINIO_BUCKET):
+        try:
+            minio_client.make_bucket(MINIO_BUCKET)
+        except Exception:
+            # If creation fails because another process created it meanwhile, just proceed
+            pass
+    minio_client.put_object(
+        MINIO_BUCKET,
+        object_name,
+        io.BytesIO(file_content),
+        len(file_content),
+        content_type=file.content_type,
+    )
     s3_path = f"s3://{MINIO_BUCKET}/{object_name}"
 
     # 2. Call OCR service to get raw text

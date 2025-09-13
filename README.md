@@ -48,8 +48,33 @@ Once all the containers are up and running, you can access the different parts o
 | **OCR Service API Docs** | `http://localhost:8001/docs`      | Swagger UI for the OCR service API.              |
 | **MLflow Tracking UI** | `http://localhost:5001`           | UI for tracking agent runs and experiments.      |
 | **MinIO Console (S3)** | `http://localhost:9001`           | Web console for browsing the S3 buckets.         |
+| **Phoenix Traces UI** | `http://localhost:6006`           | Observability: traces, LLM spans, token usage.   |
 
----
+## 📈 Observability with Phoenix
+
+This stack includes a Phoenix service for end-to-end tracing across microservices and LLM calls. Use it to inspect request flows, latencies, and token usage.
+
+### How to open
+
+* Phoenix UI: `http://localhost:6006`
+
+### Environment variables (already configured in `docker-compose.yml`)
+
+Each service exports traces to Phoenix via OTLP gRPC:
+
+* `OTEL_SERVICE_NAME`: Logical service name (e.g., `tool-web`, `agent-2-rag`, `agent-1-formatter`, `ocr-service`).
+* `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`: `http://phoenix:4317`
+* `OTEL_EXPORTER_OTLP_PROTOCOL`: `grpc`
+
+### What gets traced
+
+* __FastAPI endpoints__: incoming requests and latencies.
+* __HTTP clients__: outgoing calls (e.g., `requests`, `httpx`).
+* __LLM calls__:
+  * `agent-2-rag` orchestrator (LangChain) is instrumented via OpenInference to emit LLM spans and token usage.
+  * `agent-2-rag` SQL agent (raw OpenAI client) is instrumented via OpenInference.
+  * `tool-web` (web search summarization with OpenAI) is instrumented via OpenInference.
+
 
 ## 🖥️ User Interface & Authentication
 
@@ -78,6 +103,21 @@ The application uses a role-based access control (RBAC) system to determine whic
 The "Logout" button performs a federated logout. This means it terminates the session in both the Streamlit application and Auth0, ensuring your account is completely and securely logged out. When you try to access the application again, you will be required to re-enter your credentials.
 
 ---
+
+## 🔍 Web Search Tool
+
+The project includes a web search tool that integrates with the main orchestrator. This tool allows performing web searches and summarizing relevant information.
+
+### Required Configuration
+
+1. **Tavily API Key**: The tool uses the Tavily API for web searches. You need to obtain an API key from [Tavily](https://tavily.com/).
+
+2. **Environment Variables**: Add the following variable to your `.env` file:
+   ```
+   TAVILY_API_KEY=your_api_key_here
+   ```
+
+3. **Orchestrator Integration**: The tool is configured to be called by the `agent-2-rag` service through the URL `http://tool-web:8000/search`.
 
 ## 🔩 For Developers: Managing the Database Schema
 

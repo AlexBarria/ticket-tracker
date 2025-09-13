@@ -23,6 +23,19 @@ services:
     networks:
       - ticket-tracker-net
 
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: phoenix
+    ports:
+      - "6006:6006"   # Phoenix UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP (optional)
+    environment:
+      - PHOENIX_PORT=6006
+    restart: unless-stopped
+    networks:
+      - ticket-tracker-net
+
   minio:
     image: minio/minio:latest
     container_name: minio_s3
@@ -105,8 +118,12 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - MINIO_BUCKET=${MINIO_BUCKET}
+      - OTEL_SERVICE_NAME=agent-1-formatter
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     depends_on:
       - postgres
+      - phoenix
     restart: unless-stopped
     networks:
       - ticket-tracker-net
@@ -121,8 +138,14 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - WEB_AGENT_URL=http://tool-web:8000/search
+      - OTEL_SERVICE_NAME=agent-2-rag
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     depends_on:
       - postgres
+      - tool-web
+      - phoenix
     restart: unless-stopped
     networks:
       - ticket-tracker-net
@@ -141,6 +164,21 @@ services:
     depends_on:
       - agent-2-rag
     restart: unless-stopped
+    networks:
+      - ticket-tracker-net
+
+  tool-web:
+    build: ./tool-web
+    container_name: tool_web
+    ports:
+      - "8004:8000"
+    environment:
+      - WEB_SEARCH_PROVIDER=${WEB_SEARCH_PROVIDER:-tavily}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OTEL_SERVICE_NAME=tool-web
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     networks:
       - ticket-tracker-net
 

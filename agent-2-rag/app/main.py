@@ -2,12 +2,38 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from graph_processor import AgentPipeline
 import jwt
+import os
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
 agent_pipeline = AgentPipeline()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app = FastAPI(title="Agent 2 - RAG")
+
+
+def _setup_tracing(app: FastAPI) -> None:
+    try:
+        service_name = os.getenv("OTEL_SERVICE_NAME", "agent-2-rag")
+        endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://phoenix:4317")
+        provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
+        exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True)
+        provider.add_span_processor(BatchSpanProcessor(exporter))
+        trace.set_tracer_provider(provider)
+        FastAPIInstrumentor().instrument_app(app)
+        RequestsInstrumentor().instrument()
+    except Exception as e:
+        # Avoid crashing if tracing fails
+        pass
+
+
+_setup_tracing(app)
 
 
 def get_user_role(token: str = Depends(oauth2_scheme)):
