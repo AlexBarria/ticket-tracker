@@ -117,7 +117,7 @@ services:
     ports:
       - "8003:8000"
     volumes:
-      - ./agent-2-rag:/app
+      - ./agent-2-rag/app:/app
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
