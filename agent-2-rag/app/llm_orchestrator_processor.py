@@ -2,7 +2,7 @@
 Defines an SQL RAG agent that retrieves data from a SQL DB using natural language queries.
 """
 from langchain_core.messages import AnyMessage, SystemMessage, BaseMessage
-from langchain_openai.chat_models import ChatOpenAI
+from langchain_groq.chat_models import ChatGroq
 import logging
 from openinference.instrumentation.langchain import LangChainInstrumentor
 
@@ -30,9 +30,9 @@ class OrchestratorAgent:
         # Enable OpenInference instrumentation for LangChain to capture LLM spans and token usage
         try:
             LangChainInstrumentor().instrument()
-        except Exception:
-            pass
-        self.client = ChatOpenAI(model=model).bind_tools(tools)
+        except Exception as e:
+            logger.error(f"LangChain instrumentation failed: {e}")
+        self.client = ChatGroq(model=model).bind_tools(tools)
 
     def query(self, question: list[AnyMessage]) -> BaseMessage:
         try:

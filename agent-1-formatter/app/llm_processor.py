@@ -1,15 +1,15 @@
 import os
 import json
-from openai import OpenAI
+from groq import Groq
 from .schemas import TicketCreate
 
-# Initialize the OpenAI client
-# It will automatically read the OPENAI_API_KEY from the environment
-client = OpenAI()
+# Initialize the GROQ client
+# It will automatically read the GROQ_API_KEY from the environment
+client = Groq()
 
 def structure_receipt_text(raw_text: str) -> TicketCreate:
     """
-    Uses OpenAI's function calling model to extract structured data from raw OCR text.
+    Uses GROQ function calling model to extract structured data from raw OCR text.
     """
     system_prompt = """
     You are an expert extraction system. Your ONLY job is to read noisy OCR text from a receipt and return a SINGLE valid JSON object that EXACTLY matches the schema below. 
@@ -80,7 +80,7 @@ def structure_receipt_text(raw_text: str) -> TicketCreate:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="llama-3.3-70b-versatile",
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_prompt},

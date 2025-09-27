@@ -6,7 +6,7 @@ from typing import List, Optional
 import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from openai import OpenAI
+from groq import Groq
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -15,9 +15,9 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from openinference.instrumentation.openai import OpenAIInstrumentor
+from openinference.instrumentation.groq import GroqInstrumentor
 
-# Optional: summarization via OpenAI to produce concise answers
+# Optional: summarization via Groq to produce concise answers
 USE_SUMMARIZATION = True
 
 logger = logging.getLogger(__name__)
@@ -46,9 +46,9 @@ def _setup_tracing(app: FastAPI) -> None:
 
 _setup_tracing(app)
 
-# Enable OpenInference OpenAI SDK instrumentation to capture LLM spans and token usage
+# Enable OpenInference Groq SDK instrumentation to capture LLM spans and token usage
 try:
-    OpenAIInstrumentor().instrument()
+    GroqInstrumentor().instrument()
 except Exception as _:
     pass
 
@@ -119,8 +119,8 @@ async def fetch_page_text(url: str) -> str:
         return ""
 
 
-async def summarize_with_openai(question: str, snippets: List[str]) -> str:
-    client = OpenAI()
+async def summarize_with_groq(question: str, snippets: List[str]) -> str:
+    client = Groq()
 
     prompt = (
         "You are a helpful assistant. Given the question and excerpts from sources, write a concise answer.\n"
@@ -130,7 +130,7 @@ async def summarize_with_openai(question: str, snippets: List[str]) -> str:
     )
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are a web research assistant."},
                 {"role": "user", "content": prompt},
@@ -140,7 +140,7 @@ async def summarize_with_openai(question: str, snippets: List[str]) -> str:
         )
         return resp.choices[0].message.content
     except Exception as e:
-        logger.warning(f"OpenAI summarization failed: {e}")
+        logger.warning(f"Groq summarization failed: {e}")
         return ""
 
 
@@ -160,6 +160,6 @@ async def search(req: SearchRequest):
             if text:
                 snippets.append(text)
         if snippets:
-            summary = await summarize_with_openai(req.question, snippets)
+            summary = await summarize_with_groq(req.question, snippets)
 
     return SearchResponse(summary=summary, sources=sources, reasoning=None)

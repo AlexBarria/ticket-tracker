@@ -57,7 +57,7 @@ class AgentPipeline:
                 return f"Web search error: {e}"
 
         tools = [process_sql_rag, process_web_search]
-        self.orchestrator = OrchestratorAgent(model="gpt-4o", tools=tools)
+        self.orchestrator = OrchestratorAgent(model="openai/gpt-oss-20b", tools=tools)
 
         graph = StateGraph(MessagesState)
         graph.add_node("orchestrator", self.process_orchestrator)

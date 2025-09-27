@@ -5,7 +5,7 @@ import json
 import os
 from urllib.request import Request, urlopen
 
-from openai import OpenAI
+from groq import Groq
 from repository import DBRepository
 import logging
 
@@ -51,10 +51,10 @@ class SQLRagAgent:
         Args:
             repository (DBRepository): The database repository for executing SQL queries.
         """
-        # Initialize the OpenAI client
-        # It will automatically read the OPENAI_API_KEY from the environment
+        # Initialize the Groq client
+        # It will automatically read the GROQ_API_KEY from the environment
         logger.info("Initializing SQLRagAgent")
-        self.client = OpenAI()
+        self.client = Groq()
         self.repository = repository
         self.schema = ""
         self._process_schema()
@@ -99,7 +99,7 @@ class SQLRagAgent:
 
     def _get_sql_query(self, raw_text: str) -> str:
         response = self.client.chat.completions.create(
-            model="gpt-4o",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT.format(schema=self.schema)},
                 {"role": "user", "content": _USER_PROMPT.format(raw_text=raw_text)}

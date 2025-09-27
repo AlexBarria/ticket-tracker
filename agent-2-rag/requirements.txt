@@ -4,8 +4,8 @@ pydantic
 PyJWT
 python-dotenv
 langgraph
-openai
-langchain-openai
+groq
+langchain-groq
 psycopg2-binary
 sqlalchemy
 opentelemetry-api>=1.26.0
@@ -15,4 +15,4 @@ opentelemetry-instrumentation-fastapi>=0.47b0
 opentelemetry-instrumentation-requests>=0.47b0
 openinference-instrumentation-langchain>=0.1.11
 openinference-semantic-conventions>=0.1.11
-openinference-instrumentation-openai>=0.1.11
+openinference-instrumentation-groq>=0.1.11

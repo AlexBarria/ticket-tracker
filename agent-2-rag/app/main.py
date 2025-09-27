@@ -10,6 +10,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from openinference.instrumentation.groq import GroqInstrumentor
 
 agent_pipeline = AgentPipeline()
 
@@ -28,6 +29,7 @@ def _setup_tracing(app: FastAPI) -> None:
         trace.set_tracer_provider(provider)
         FastAPIInstrumentor().instrument_app(app)
         RequestsInstrumentor().instrument()
+        GroqInstrumentor().instrument()
     except Exception as e:
         # Avoid crashing if tracing fails
         pass
