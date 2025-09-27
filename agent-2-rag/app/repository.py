@@ -9,7 +9,7 @@ SELECT
 	t.table_name as table_name, 
 	obj_description((t.table_schema || '.' || quote_ident(t.table_name))::regclass, 'pg_class') AS table_comment
 FROM information_schema.tables t
-WHERE t.table_schema NOT IN ('pg_catalog', 'information_schema')
+WHERE t.table_schema NOT IN ('pg_catalog', 'information_schema') AND t.table_type = 'VIEW'
 ORDER BY t.table_schema, t.table_name;
 """
 

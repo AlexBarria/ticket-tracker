@@ -1,6 +1,10 @@
 """
 Defines an SQL RAG agent that retrieves data from a SQL DB using natural language queries.
 """
+import json
+import os
+from urllib.request import Request, urlopen
+
 from openai import OpenAI
 from repository import DBRepository
 import logging
@@ -71,6 +75,8 @@ class SQLRagAgent:
             logger.info(f"Processing question: {question}")
             sql_query = self._get_sql_query(question)
             logger.info(f"Generated SQL Query: {sql_query}")
+            if os.getenv("GUARDRAILS_ENABLED", "false").lower() == "true":
+                self._validate(sql_query)
             results = self.repository.execute_query(sql_query)
             logger.info(f"Query executed successfully, results: {results}")
             return results
@@ -92,16 +98,27 @@ class SQLRagAgent:
         logger.info(f"Processed schema: {self.schema}")
 
     def _get_sql_query(self, raw_text: str) -> str:
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": _SYSTEM_PROMPT.format(schema=self.schema)},
-                    {"role": "user", "content": _USER_PROMPT.format(raw_text=raw_text)}
-                ]
-            )
-            return response.choices[0].message.content
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT.format(schema=self.schema)},
+                {"role": "user", "content": _USER_PROMPT.format(raw_text=raw_text)}
+            ]
+        )
+        return response.choices[0].message.content
 
-        except Exception as e:
-            logger.error(f"Error generating SQL query: {e}")
-            raise
+    @staticmethod
+    def _validate(sql_query: str):
+        guardrails_url = os.getenv("GUARDRAILS_URL", "http://guardrails:8000/validate")
+        payload = {
+            "guard": "sql",
+            "prompt": sql_query
+        }
+        logger.info(f"Validating SQL query with Guardrails, url {guardrails_url}")
+        req = Request(guardrails_url, data=json.dumps(payload).encode("utf-8"),
+                      headers={"Content-Type": "application/json"})
+        with urlopen(req, timeout=20) as response:
+            if response.status != 200:
+                response_text = response.read().decode("utf-8")
+                logger.error(f"Guardrails validation failed: {response_text}")
+                raise Exception(f"Guardrails validation failed: {response.text}")

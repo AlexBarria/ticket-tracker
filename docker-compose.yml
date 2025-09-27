@@ -139,6 +139,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - WEB_AGENT_URL=http://tool-web:8000/search
+      - GUARDRAILS_URL=http://guardrails:8000/validate
+      - GUARDRAILS_ENABLED=${GUARDRAILS_ENABLED:-false}
       - OTEL_SERVICE_NAME=agent-2-rag
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
@@ -179,6 +181,22 @@ services:
       - OTEL_SERVICE_NAME=tool-web
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    networks:
+      - ticket-tracker-net
+
+  guardrails:
+    build:
+      context: ./guardrails
+      args:
+        GUARDRAILS_ENABLED: ${GUARDRAILS_ENABLED:-false}
+        GUARDRAILS_TOKEN: ${GUARDRAILS_TOKEN}
+    container_name: guardrails
+    environment:
+      - OTEL_SERVICE_NAME=guardrails
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    ports:
+      - "8005:8000"
     networks:
       - ticket-tracker-net
 

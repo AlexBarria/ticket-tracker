@@ -19,7 +19,6 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from . import crud, models, schemas, llm_processor
 from .database import SessionLocal, engine
 
-
 # Create database tables on startup
 models.Base.metadata.create_all(bind=engine)
 
@@ -103,12 +102,10 @@ def read_root():
 
 @app.post("/upload-receipt/", response_model=schemas.TicketResponse)
 async def upload_receipt(
-    file: UploadFile = File(...),
-    user_id: str = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
+        file: UploadFile = File(...),
+        user_id: str = Depends(get_current_user),
+        db: Session = Depends(get_db)):
     file_content = await file.read()
-    
     # 1. Upload original image to MinIO
     object_name = f"{user_id}/{file.filename}"
     # Ensure bucket exists in case startup check raced with init job
@@ -128,7 +125,8 @@ async def upload_receipt(
     s3_path = f"s3://{MINIO_BUCKET}/{object_name}"
 
     # 2. Call OCR service to get raw text
-    ocr_response = requests.post("http://ocr-service:8000/scan", files={"file": (file.filename, file_content, file.content_type)})
+    ocr_response = requests.post("http://ocr-service:8000/scan",
+                                 files={"file": (file.filename, file_content, file.content_type)})
     if ocr_response.status_code != 200:
         raise HTTPException(status_code=503, detail=f"OCR service failed: {ocr_response.text}")
     extracted_text = ocr_response.json().get("text")
@@ -141,5 +139,31 @@ async def upload_receipt(
 
     # 4. Save the structured data to the database
     db_ticket = crud.create_ticket(db=db, ticket_data=structured_data, s3_path=s3_path, user_id=user_id)
-    
+
     return db_ticket
+
+
+@app.post("/approve-receipt/", response_model=schemas.TicketApproveVerifyResponse)
+async def approve_receipt(
+        request: schemas.TicketApproveVerifyRequest,
+        user_id: str = Depends(get_current_user),
+        db: Session = Depends(get_db)):
+    try:
+        if crud.approve_ticket(db=db, id=request.id, user_id=user_id) is None:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        return schemas.TicketApproveVerifyResponse(status="approved", id=request.id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Approval failed: {str(e)}")
+
+
+@app.post("/verify-receipt/", response_model=schemas.TicketApproveVerifyResponse)
+async def verify_receipt(
+        request: schemas.TicketApproveVerifyRequest,
+        user_id: str = Depends(get_current_user),
+        db: Session = Depends(get_db)):
+    try:
+        if crud.verify_ticket(db=db, id=request.id, user_id=user_id) is None:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        return schemas.TicketApproveVerifyResponse(status="approved", id=request.id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Approval failed: {str(e)}")

@@ -2,9 +2,11 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
 
+
 class Item(BaseModel):
     description: str
     price: float
+
 
 class TicketCreate(BaseModel):
     merchant_name: str
@@ -13,6 +15,7 @@ class TicketCreate(BaseModel):
     category: str
     items: List[Item]
 
+
 class TicketResponse(TicketCreate):
     id: int
     s3_path: str
@@ -20,3 +23,12 @@ class TicketResponse(TicketCreate):
 
     class Config:
         orm_mode = True
+
+
+class TicketApproveVerifyRequest(BaseModel):
+    id: int
+
+
+class TicketApproveVerifyResponse(BaseModel):
+    id: int
+    status: str

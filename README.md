@@ -40,15 +40,16 @@ Follow these instructions to get the entire microservices stack running on your 
 
 Once all the containers are up and running, you can access the different parts of the system at the following URLs:
 
-| Service               | URL                               | Description                                      |
-| --------------------- | --------------------------------- | ------------------------------------------------ |
-| **Admin UI (Streamlit)** | `http://localhost:8501`           | The main web interface for admin queries.        |
-| **Agent 2 API Docs** | `http://localhost:8003/docs`      | Swagger UI for the RAG agent API.                |
-| **Agent 1 API Docs** | `http://localhost:8002/docs`      | Swagger UI for the Formatter agent API.          |
-| **OCR Service API Docs** | `http://localhost:8001/docs`      | Swagger UI for the OCR service API.              |
-| **MLflow Tracking UI** | `http://localhost:5001`           | UI for tracking agent runs and experiments.      |
-| **MinIO Console (S3)** | `http://localhost:9001`           | Web console for browsing the S3 buckets.         |
-| **Phoenix Traces UI** | `http://localhost:6006`           | Observability: traces, LLM spans, token usage.   |
+| Service                  | URL                              | Description                                    |
+|--------------------------|----------------------------------|------------------------------------------------|
+| **Admin UI (Streamlit)** | `http://localhost:8501`          | The main web interface for admin queries.      |
+| **Agent 2 API Docs**     | `http://localhost:8003/docs`     | Swagger UI for the RAG agent API.              |
+| **Agent 1 API Docs**     | `http://localhost:8002/docs`     | Swagger UI for the Formatter agent API.        |
+| **OCR Service API Docs** | `http://localhost:8001/docs`     | Swagger UI for the OCR service API.            |
+| **MLflow Tracking UI**   | `http://localhost:5001`          | UI for tracking agent runs and experiments.    |
+| **MinIO Console (S3)**   | `http://localhost:9001`          | Web console for browsing the S3 buckets.       |
+| **Phoenix Traces UI**    | `http://localhost:6006`          | Observability: traces, LLM spans, token usage. |
+| **Guardrails**           | `http://localhost:8005/validate` | Guardrails API to validate prompts             |
 
 ## 📈 Observability with Phoenix
 
@@ -145,17 +146,21 @@ If you make a change to the database schema in `agent-1-formatter/app/models.py`
 
 All structured receipt information is stored in the `tickets` table. Here is a description of its main fields:
 
-| Column | Data Type | Description |
-| :--- | :--- | :--- |
-| `id` | SERIAL (Primary Key) | A unique identifier for each ticket record. |
-| `merchant_name` | VARCHAR(255) | The name of the store or business, extracted by the LLM. |
-| `transaction_date`| DATE | The date of the transaction (e.g., '2025-09-07'). |
-| `total_amount` | NUMERIC(10, 2) | The final total amount of the purchase. |
-| `items` | JSONB | A JSON array containing the list of purchased items. Each item is an object with a `description` and a `price`. |
-| `category` | VARCHAR(100) | The expense category (e.g., 'Groceries', 'Restaurant') as determined by the LLM. |
-| `s3_path` | VARCHAR(512) | The full S3 path to the original receipt image stored in MinIO. |
-| `user_id` | VARCHAR(255) | The unique ID of the user (from Auth0) who uploaded the ticket. |
-| `created_at` | TIMESTAMP | The timestamp when the record was inserted into the database. |
+| Column             | Data Type            | Description                                                                                                     |
+|:-------------------|:---------------------|:----------------------------------------------------------------------------------------------------------------|
+| `id`               | SERIAL (Primary Key) | A unique identifier for each ticket record.                                                                     |
+| `merchant_name`    | VARCHAR(255)         | The name of the store or business, extracted by the LLM.                                                        |
+| `transaction_date` | DATE                 | The date of the transaction (e.g., '2025-09-07').                                                               |
+| `total_amount`     | NUMERIC(10, 2)       | The final total amount of the purchase.                                                                         |
+| `items`            | JSONB                | A JSON array containing the list of purchased items. Each item is an object with a `description` and a `price`. |
+| `category`         | VARCHAR(100)         | The expense category (e.g., 'Groceries', 'Restaurant') as determined by the LLM.                                |
+| `s3_path`          | VARCHAR(512)         | The full S3 path to the original receipt image stored in MinIO.                                                 |
+| `user_id`          | VARCHAR(255)         | The unique ID of the user (from Auth0) who uploaded the ticket.                                                 |
+| `need_verify`      | BOOLEAN              | Indicates if the ticket need verification from an admin.                                                        |
+| `approved`         | BOOLEAN              | Indicates if the ticket ocr was validated and approved.                                                         |
+| `created_at`       | TIMESTAMP            | The timestamp when the record was inserted into the database.                                                   |
+
+Agents don't have direct access to `tickets` table, instead they interact with a view that only shows the approved tickets.
 
 ---
 
@@ -169,10 +174,12 @@ This project follows a microservices architecture. Each top-level directory repr
 ├── .gitignore
 ├── agent-1-formatter/    # Microservice: Structures OCR text into JSON
 ├── agent-2-rag/          # Microservice: Answers admin queries using RAG
+├── guardrails/           # Microservice: Validates prompts with Guardrails
 ├── minio/                # Configuration and data for MinIO (S3 storage)
 ├── ocr-service/          # Microservice: Extracts raw text from images
 ├── postgres/             # Configuration and data for PostgreSQL DB
 ├── ui/                   # Microservice: Streamlit frontend for admins
+├── tool-web/             # Microservice: Web search and summarization tool
 ├── docker-compose.yml    # The master file to build and run all services
 ├── folders_creation.py   # (Utility script) The generator you used
 ├── pyproject.toml        # Project metadata (can be used for dev tools)
@@ -191,8 +198,10 @@ This project follows a microservices architecture. Each top-level directory repr
     5.  Using an OpenAI LLM (e.g., GPT-4o) to parse the raw text into a structured JSON object.
     6.  Validating the LLM's output against a Pydantic schema.
     7.  Saving the final structured data to the **PostgreSQL** database.
-* `agent-2-rag/`: (Future) A **FastAPI** service that will implement the Retrieval-Augmented Generation (RAG) logic. It will receive a natural language question, translate it into a SQL query, fetch data from the database, and generate a human-readable answer.
+* `agent-2-rag/`: A **FastAPI** service that will implement the Retrieval-Augmented Generation (RAG) logic. It will receive a natural language question, translate it into a SQL query, fetch data from the database, and generate a human-readable answer.
+* `guardrails/`: A **FastAPI** service that exposes a Guardrails validation endpoint. It ensures that prompts adhere to predefined constraints, enhancing reliability and safety.
 * `ocr-service/`: A **FastAPI** service that exposes a text recognition model. It's a specialized "tool" service whose only job is to accept an image file and return the extracted raw text, preserving line breaks. It uses the **EasyOCR** library to perform this task.
+* `tool-web/`: A **FastAPI** service that provides a web search and summarization tool. It uses the Tavily API to perform web searches and OpenAI to summarize the results.
 * `postgres/`: Contains the configuration for the PostgreSQL database, including an `init-db.sql` script that creates the necessary tables on the first run.
 * `minio/`: Configuration for the MinIO object storage service, which acts as an S3-compatible server for storing the original receipt images.
 * **MLflow**: Defined within `docker-compose.yml`. It's configured to run using the official Docker image, with Postgres as its backend store and MinIO as its artifact store for experiment tracking.
