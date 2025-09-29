@@ -1,6 +1,4 @@
 # This docker-compose file orchestrates all the microservices for the Ticket Tracker app.
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -74,18 +72,19 @@ services:
     image: python:3.10  # Use a python image to install dependencies
     container_name: mlflow_server
     command: >
-      sh -c "pip install mlflow boto3 psycopg2-binary &&
-             mlflow server \
-             --host 0.0.0.0 \
-             --port 5001 \
-             --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mlflow_db \
-             --default-artifact-root s3://${MINIO_BUCKET}/mlflow-artifacts"
+      sh -c "pip install --no-cache-dir mlflow boto3 psycopg2-binary &&
+           export MLFLOW_BACKEND_STORE_URI='postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mlflow_db' &&
+           export MLFLOW_DEFAULT_ARTIFACT_ROOT='s3://${MINIO_BUCKET}/mlflow-artifacts' &&
+           python -m uvicorn mlflow.server.fastapi_app:app --host 0.0.0.0 --port 5000"
     ports:
-      - "5001:5001"
+      - "5001:5000"
     environment:
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - MINIO_BUCKET=${MINIO_BUCKET}
     depends_on:
       - postgres
       - create-minio-bucket
@@ -112,7 +111,7 @@ services:
     volumes:
       - ./agent-1-formatter/app:/code/app
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}   
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
@@ -176,8 +175,8 @@ services:
       - "8004:8000"
     environment:
       - WEB_SEARCH_PROVIDER=${WEB_SEARCH_PROVIDER:-tavily}
-      - TAVILY_API_KEY=${TAVILY_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}   
+      - OPENAI_MODEL=${OPENAI_MODEL}      
       - OTEL_SERVICE_NAME=tool-web
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc

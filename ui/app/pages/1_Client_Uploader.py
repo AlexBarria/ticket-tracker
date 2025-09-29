@@ -27,7 +27,7 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    st.image(uploaded_file, caption="Uploaded Receipt.", use_column_width=True)
+    st.image(uploaded_file, caption="Uploaded Receipt.", width=True)
 
     if st.button("Process Receipt"):
         with st.spinner("Uploading and processing..."):
