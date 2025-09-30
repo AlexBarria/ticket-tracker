@@ -111,7 +111,18 @@ class SQLRagAgent:
                 {"role": "user", "content": _USER_PROMPT.format(raw_text=raw_text)}
             ]
         )
-        return response.choices[0].message.content
+        sql_query = response.choices[0].message.content
+
+        # Strip markdown code fences if present
+        sql_query = sql_query.strip()
+        if sql_query.startswith("```sql"):
+            sql_query = sql_query[6:]  # Remove ```sql
+        elif sql_query.startswith("```"):
+            sql_query = sql_query[3:]  # Remove ```
+        if sql_query.endswith("```"):
+            sql_query = sql_query[:-3]  # Remove trailing ```
+
+        return sql_query.strip()
 
     @staticmethod
     def _validate(sql_query: str):
