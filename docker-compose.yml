@@ -164,6 +164,7 @@ services:
       - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
     depends_on:
       - agent-2-rag
+      - evaluation-service
     restart: unless-stopped
     networks:
       - ticket-tracker-net
@@ -196,6 +197,33 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     ports:
       - "8005:8000"
+    networks:
+      - ticket-tracker-net
+
+  evaluation-service:
+    build: ./evaluation-service
+    container_name: evaluation_service
+    ports:
+      - "8006:8006"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      - AGENT_2_URL=http://agent-2-rag:8000
+      - EVAL_SCHEDULE_CRON=${EVAL_SCHEDULE_CRON:-0 2 * * *}
+      - EVAL_BATCH_SIZE=${EVAL_BATCH_SIZE:-5}
+      - EVAL_TIMEOUT=${EVAL_TIMEOUT:-30}
+      - OTEL_SERVICE_NAME=evaluation-service
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    depends_on:
+      postgres:
+        condition: service_healthy
+      agent-2-rag:
+        condition: service_started
+      phoenix:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - ticket-tracker-net
 
