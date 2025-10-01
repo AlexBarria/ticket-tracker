@@ -15,3 +15,4 @@ class Ticket(Base):
     user_id = Column(String, index=True)
     need_verify = Column(Boolean)
     approved = Column(Boolean, nullable=True)
+    has_ground_truth = Column(Boolean, default=False, nullable=True)

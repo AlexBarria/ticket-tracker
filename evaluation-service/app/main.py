@@ -15,6 +15,7 @@ from .config import settings
 from .database import engine
 from .api.evaluation_routes import router as evaluation_router
 from .api.metrics_routes import router as metrics_router
+from .api.agent1_evaluation_routes import router as agent1_evaluation_router
 from .scheduler import start_scheduler
 
 # Configure logging
@@ -72,6 +73,7 @@ setup_tracing()
 
 # Include routers
 app.include_router(evaluation_router, prefix="/api/v1/evaluation", tags=["evaluation"])
+app.include_router(agent1_evaluation_router, prefix="/api/v1/evaluation/agent1", tags=["agent1-evaluation"])
 app.include_router(metrics_router, prefix="/api/v1/metrics", tags=["metrics"])
 
 

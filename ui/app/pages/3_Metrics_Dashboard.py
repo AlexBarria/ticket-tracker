@@ -65,20 +65,159 @@ def format_timestamp(timestamp_str):
     except:
         return timestamp_str
 
+def show_agent1_metrics():
+    """Display Agent 1 (OCR) evaluation metrics"""
+    st.header("🧾 Agent 1 (OCR) Evaluation Metrics")
+
+    # Fetch Agent 1 summary metrics
+    agent1_summary = fetch_data("/api/v1/metrics/agent1/summary")
+
+    if agent1_summary:
+        # Display summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            total_evals = agent1_summary.get("total_evaluations", 0)
+            st.metric("📊 Total Evaluations", total_evals)
+
+        with col2:
+            merchant_match = agent1_summary.get("avg_merchant_match", 0)
+            st.metric("🏪 Merchant Match", f"{merchant_match:.1%}")
+
+        with col3:
+            amount_match = agent1_summary.get("avg_amount_match", 0)
+            st.metric("💰 Amount Match", f"{amount_match:.1%}")
+
+        with col4:
+            overall_quality = agent1_summary.get("avg_overall_quality", 0)
+            st.metric("⭐ Overall Quality", f"{overall_quality:.1%}")
+
+        st.markdown("---")
+
+        # Detailed metrics section
+        st.subheader("📈 Detailed Metrics")
+
+        metric_col1, metric_col2, metric_col3 = st.columns(3)
+
+        with metric_col1:
+            st.write("**Exact Match Metrics**")
+            date_match = agent1_summary.get("avg_date_match", 0)
+            st.metric("📅 Date Match", f"{date_match:.1%}")
+            st.metric("🏪 Merchant Match", f"{merchant_match:.1%}")
+            st.metric("💰 Amount Match", f"{amount_match:.1%}")
+
+        with metric_col2:
+            st.write("**Item Extraction Metrics**")
+            item_precision = agent1_summary.get("avg_item_precision", 0)
+            item_recall = agent1_summary.get("avg_item_recall", 0)
+            item_f1 = agent1_summary.get("avg_item_f1", 0)
+            st.metric("🎯 Precision", f"{item_precision:.1%}")
+            st.metric("📚 Recall", f"{item_recall:.1%}")
+            st.metric("⚖️ F1 Score", f"{item_f1:.1%}")
+
+        with metric_col3:
+            st.write("**LLM Quality Assessment**")
+            merchant_sim = agent1_summary.get("avg_merchant_similarity", 0)
+            items_sim = agent1_summary.get("avg_items_similarity", 0)
+            st.metric("🔤 Merchant Similarity", f"{merchant_sim:.1%}")
+            st.metric("📝 Items Similarity", f"{items_sim:.1%}")
+            st.metric("⭐ Overall Quality", f"{overall_quality:.1%}")
+
+        st.markdown("---")
+
+        # Recent runs section
+        st.subheader("🏃 Recent Evaluation Runs")
+        agent1_runs = fetch_data("/api/v1/metrics/agent1/runs?limit=10")
+
+        if agent1_runs and len(agent1_runs) > 0:
+            runs_df = pd.DataFrame(agent1_runs)
+
+            # Format the dataframe for display
+            display_df = pd.DataFrame({
+                "Run ID": runs_df["run_id"].apply(lambda x: str(x)[:8]),
+                "Type": runs_df["run_type"],
+                "Status": runs_df["status"],
+                "Started": runs_df["started_at"].apply(format_timestamp),
+                "Tickets": runs_df["total_tickets"],
+                "Success": runs_df["successful_tickets"],
+                "Merchant Match": runs_df["average_merchant_match"].apply(lambda x: f"{x:.1%}" if pd.notna(x) else "N/A"),
+                "Amount Match": runs_df["average_amount_match"].apply(lambda x: f"{x:.1%}" if pd.notna(x) else "N/A"),
+                "F1 Score": runs_df["average_item_f1"].apply(lambda x: f"{x:.1%}" if pd.notna(x) else "N/A"),
+                "Overall Quality": runs_df["average_overall_quality"].apply(lambda x: f"{x:.1%}" if pd.notna(x) else "N/A")
+            })
+
+            st.dataframe(display_df, use_container_width=True)
+        else:
+            st.info("No Agent 1 evaluation runs found yet. Evaluate tickets from the Admin Dashboard to see metrics here.")
+
+        # Trends chart
+        st.subheader("📊 Quality Trends Over Time")
+
+        if agent1_runs and len(agent1_runs) > 0:
+            # Filter completed runs with metrics
+            completed_runs = [r for r in agent1_runs if r.get("status") == "completed" and r.get("average_overall_quality") is not None]
+
+            if len(completed_runs) > 0:
+                trends_df = pd.DataFrame(completed_runs)
+                trends_df["started_at"] = pd.to_datetime(trends_df["started_at"])
+                trends_df = trends_df.sort_values("started_at")
+
+                fig = go.Figure()
+
+                # Add traces for each metric
+                fig.add_trace(go.Scatter(
+                    x=trends_df["started_at"],
+                    y=trends_df["average_overall_quality"],
+                    name="Overall Quality",
+                    mode="lines+markers"
+                ))
+
+                fig.add_trace(go.Scatter(
+                    x=trends_df["started_at"],
+                    y=trends_df["average_merchant_match"],
+                    name="Merchant Match",
+                    mode="lines+markers"
+                ))
+
+                fig.add_trace(go.Scatter(
+                    x=trends_df["started_at"],
+                    y=trends_df["average_amount_match"],
+                    name="Amount Match",
+                    mode="lines+markers"
+                ))
+
+                fig.add_trace(go.Scatter(
+                    x=trends_df["started_at"],
+                    y=trends_df["average_item_f1"],
+                    name="Item F1 Score",
+                    mode="lines+markers"
+                ))
+
+                fig.update_layout(
+                    xaxis_title="Date",
+                    yaxis_title="Score",
+                    yaxis=dict(range=[0, 1]),
+                    hovermode="x unified"
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Not enough completed evaluations to show trends yet.")
+        else:
+            st.info("No evaluation data available for trends.")
+    else:
+        st.warning("Failed to fetch Agent 1 metrics from evaluation service.")
+
 def main():
     st.title("📊 Metrics Dashboard")
     st.markdown("Monitor and analyze system performance metrics")
 
-    # Add tabs for different metric categories - ready for future expansion
+    # Add tabs for different agent evaluations
     metric_category = st.selectbox(
         "📈 Metric Category:",
-        ["🎯 RAGAS Evaluation", "📊 System Performance", "📈 Usage Analytics"],
-        help="Select the type of metrics to view"
+        ["🧾 Agent 1 (OCR)", "🤖 Agent 2 (RAG)"],
+        help="Select which agent evaluation to view"
     )
-
-    # Currently only RAGAS is implemented
-    if metric_category != "🎯 RAGAS Evaluation":
-        st.info(f"🚧 {metric_category} metrics coming soon! Currently showing RAGAS evaluation metrics.")
 
     st.markdown("---")
 
@@ -98,6 +237,12 @@ def main():
     if st.sidebar.button("🔄 Refresh Data"):
         st.rerun()
 
+    # === AGENT 1 (OCR) METRICS ===
+    if metric_category == "🧾 Agent 1 (OCR)":
+        show_agent1_metrics()
+        return
+
+    # === AGENT 2 (RAG) METRICS ===
     # Trigger evaluation section
     st.sidebar.header("🎯 Trigger Evaluation")
 
@@ -189,7 +334,7 @@ def main():
                     delta=None
                 )
 
-    # Create two main sections
+    # Agent 2 RAG Evaluation metrics
     tab1, tab2, tab3, tab4 = st.tabs(["📊 Overview", "📈 Trends", "🏃 Recent Runs", "⚙️ System Status"])
 
     with tab1:

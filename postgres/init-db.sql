@@ -12,6 +12,19 @@ CREATE TABLE IF NOT EXISTS tickets (
     user_id VARCHAR(255),
     need_verify BOOLEAN,
     approved BOOLEAN,
+    has_ground_truth BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Ground truth table for corrected ticket values
+CREATE TABLE IF NOT EXISTS ticket_ground_truth (
+    id SERIAL PRIMARY KEY,
+    ticket_id INTEGER UNIQUE REFERENCES tickets(id) ON DELETE CASCADE,
+    corrected_merchant VARCHAR(255),
+    corrected_date DATE,
+    corrected_amount NUMERIC(10, 2),
+    corrected_items JSONB,
+    corrected_by VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -90,3 +103,86 @@ COMMENT ON COLUMN evaluation_results.faithfulness_score IS 'RAGAS faithfulness m
 COMMENT ON COLUMN evaluation_results.answer_relevance_score IS 'RAGAS answer relevance metric score';
 COMMENT ON COLUMN evaluation_results.context_precision_score IS 'RAGAS context precision metric score';
 COMMENT ON COLUMN evaluation_results.context_recall_score IS 'RAGAS context recall metric score';
+
+-- Agent 1 (OCR/Formatter) Evaluation Tables
+CREATE TABLE IF NOT EXISTS agent1_evaluation_runs (
+    id SERIAL PRIMARY KEY,
+    run_id UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
+    run_type VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMP,
+    total_tickets INT,
+    successful_tickets INT,
+
+    -- Deterministic metrics (averages)
+    average_merchant_match NUMERIC(5, 4),
+    average_date_match NUMERIC(5, 4),
+    average_amount_match NUMERIC(5, 4),
+    average_item_precision NUMERIC(5, 4),
+    average_item_recall NUMERIC(5, 4),
+    average_item_f1 NUMERIC(5, 4),
+
+    -- LLM-as-Judge metrics (averages)
+    average_merchant_similarity NUMERIC(5, 4),
+    average_items_similarity NUMERIC(5, 4),
+    average_overall_quality NUMERIC(5, 4),
+
+    run_metadata JSONB
+);
+
+-- Individual Agent 1 evaluation results
+CREATE TABLE IF NOT EXISTS agent1_evaluation_results (
+    id SERIAL PRIMARY KEY,
+    run_id UUID REFERENCES agent1_evaluation_runs(run_id),
+    test_id VARCHAR(50),
+    filename VARCHAR(255),
+
+    -- Ground truth data
+    expected_merchant VARCHAR(255),
+    expected_date DATE,
+    expected_amount NUMERIC(10, 2),
+    expected_items JSONB,
+
+    -- Agent 1 output
+    actual_merchant VARCHAR(255),
+    actual_date DATE,
+    actual_amount NUMERIC(10, 2),
+    actual_items JSONB,
+
+    -- Deterministic metrics
+    merchant_exact_match BOOLEAN,
+    date_exact_match BOOLEAN,
+    amount_exact_match BOOLEAN,
+    item_precision NUMERIC(5, 4),
+    item_recall NUMERIC(5, 4),
+    item_f1 NUMERIC(5, 4),
+
+    -- LLM-as-Judge metrics
+    merchant_similarity_score NUMERIC(5, 4),
+    items_similarity_score NUMERIC(5, 4),
+    overall_quality_score NUMERIC(5, 4),
+    llm_feedback TEXT,
+
+    processing_time_ms INT,
+    evaluation_status VARCHAR(20),
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent1_eval_runs_started ON agent1_evaluation_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent1_eval_results_run_id ON agent1_evaluation_results(run_id);
+
+-- Comments for Agent 1 evaluation tables
+COMMENT ON TABLE agent1_evaluation_runs IS 'Tracking table for Agent 1 (OCR/Formatter) evaluation runs';
+COMMENT ON TABLE agent1_evaluation_results IS 'Individual ticket results for each Agent 1 evaluation run';
+COMMENT ON COLUMN agent1_evaluation_runs.run_id IS 'Unique identifier for each evaluation run';
+COMMENT ON COLUMN agent1_evaluation_runs.run_type IS 'Type of evaluation run (sample, manual, realtime)';
+COMMENT ON COLUMN agent1_evaluation_runs.average_merchant_match IS 'Average exact match rate for merchant names';
+COMMENT ON COLUMN agent1_evaluation_runs.average_item_f1 IS 'Average F1 score for item extraction';
+COMMENT ON COLUMN agent1_evaluation_runs.average_merchant_similarity IS 'Average LLM-judged similarity for merchant names';
+COMMENT ON COLUMN agent1_evaluation_results.merchant_exact_match IS 'Whether merchant name matches exactly';
+COMMENT ON COLUMN agent1_evaluation_results.item_precision IS 'Precision score for extracted items';
+COMMENT ON COLUMN agent1_evaluation_results.item_recall IS 'Recall score for extracted items';
+COMMENT ON COLUMN agent1_evaluation_results.merchant_similarity_score IS 'LLM-judged semantic similarity for merchant name';
+COMMENT ON COLUMN agent1_evaluation_results.overall_quality_score IS 'LLM-judged overall extraction quality';

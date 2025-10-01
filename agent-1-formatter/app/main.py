@@ -2,7 +2,7 @@
 import os
 import io
 import logging
-from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, Query, Response
 from fastapi.security import OAuth2PasswordBearer
 from minio import Minio
 from sqlalchemy.orm import Session
@@ -167,3 +167,98 @@ async def verify_receipt(
         return schemas.TicketApproveVerifyResponse(status="approved", id=request.id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Approval failed: {str(e)}")
+
+
+@app.get("/api/tickets")
+async def get_tickets(
+        limit: int = 10,
+        need_verify: bool = Query(None),
+        user_id: str = Depends(get_current_user),
+        db: Session = Depends(get_db)):
+    """Get recent tickets for the current user"""
+    import traceback
+    try:
+        tickets = crud.get_user_tickets(db=db, user_id=user_id, limit=limit, need_verify=need_verify)
+
+        # Convert SQLAlchemy objects to dicts
+        tickets_data = []
+        for ticket in tickets:
+            tickets_data.append({
+                "id": ticket.id,
+                "merchant_name": ticket.merchant_name,
+                "transaction_date": str(ticket.transaction_date) if ticket.transaction_date else None,
+                "total_amount": ticket.total_amount,
+                "category": ticket.category,
+                "items": ticket.items,
+                "s3_path": ticket.s3_path,
+                "user_id": ticket.user_id,
+                "need_verify": ticket.need_verify,
+                "approved": ticket.approved
+            })
+
+        return tickets_data
+    except Exception as e:
+        print(f"ERROR in get_tickets: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to fetch tickets: {str(e)}")
+
+@app.post("/api/save-ground-truth")
+async def save_ground_truth(
+    request: dict,
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Save ground truth for a ticket after evaluation"""
+    import json
+    try:
+        ticket_id = request.get("ticket_id")
+        corrected_merchant = request.get("corrected_merchant")
+        corrected_date = request.get("corrected_date")
+        corrected_amount = request.get("corrected_amount")
+        corrected_items = request.get("corrected_items")
+
+        # Convert items to JSON string for JSONB storage
+        corrected_items_json = json.dumps(corrected_items)
+
+        crud.save_ground_truth(
+            db=db,
+            ticket_id=ticket_id,
+            corrected_merchant=corrected_merchant,
+            corrected_date=corrected_date,
+            corrected_amount=corrected_amount,
+            corrected_items=corrected_items_json,
+            corrected_by=user_id
+        )
+
+        return {"status": "success", "message": "Ground truth saved and ticket approved"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save ground truth: {str(e)}")
+
+
+@app.get("/api/image")
+def get_image(
+    s3_path: str = Query(...)
+):
+    """
+    Streams an image from MinIO given its s3_path.
+    """
+    try:
+        if not s3_path.startswith("s3://"):
+            raise HTTPException(status_code=400, detail="Invalid s3_path format")
+        path = s3_path[5:]
+        bucket, object_name = path.split("/", 1)
+
+        data = minio_client.get_object(bucket, object_name)
+        image_bytes = data.read()
+
+        # Infer MIME type from file extension
+        if object_name.lower().endswith(".png"):
+            mime_type = "image/png"
+        elif object_name.lower().endswith(".jpg") or object_name.lower().endswith(".jpeg"):
+            mime_type = "image/jpeg"
+        else:
+            mime_type = "application/octet-stream"  # fallback
+
+        return Response(content=image_bytes, media_type=mime_type)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Image not found: {str(e)}")

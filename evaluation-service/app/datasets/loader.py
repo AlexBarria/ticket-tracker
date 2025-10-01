@@ -73,3 +73,21 @@ class TestDataLoader:
                 return json.load(f)
         except FileNotFoundError:
             return []
+
+    def load_agent1_test_tickets(self, filename: str = "agent1_test_tickets.json") -> List[Dict[str, Any]]:
+        """Load Agent 1 test tickets from JSON file"""
+        file_path = self.datasets_dir / filename
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                tickets = json.load(f)
+            return tickets
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Agent 1 test tickets file not found: {file_path}")
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in Agent 1 test tickets file: {e}")
+
+    def get_agent1_sample_tickets(self, count: int = 3, filename: str = "agent1_test_tickets.json") -> List[Dict[str, Any]]:
+        """Get a sample of Agent 1 test tickets"""
+        tickets = self.load_agent1_test_tickets(filename)
+        return tickets[:count] if len(tickets) >= count else tickets

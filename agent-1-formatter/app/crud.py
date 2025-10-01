@@ -43,3 +43,67 @@ def verify_ticket(db: Session, id: int, user_id: str):
     db_ticket.need_verify = True
     db.commit()
     return db_ticket
+
+
+def get_user_tickets(db: Session, user_id: str, limit: int = 10, need_verify: bool = None):
+    """Get recent tickets for a user"""
+    # For admin users, show all tickets
+    # For regular users, filter by user_id
+    query = db.query(models.Ticket)
+
+    # Filter by need_verify if specified
+    if need_verify is not None:
+        query = query.filter(models.Ticket.need_verify == need_verify)
+        # Also exclude tickets that already have ground truth
+        query = query.filter(models.Ticket.has_ground_truth == False)
+
+    tickets = query.order_by(models.Ticket.id.desc()).limit(limit).all()
+    return tickets
+
+
+def save_ground_truth(
+    db: Session,
+    ticket_id: int,
+    corrected_merchant: str,
+    corrected_date: str,
+    corrected_amount: float,
+    corrected_items: list,
+    corrected_by: str
+):
+    """Save ground truth for a ticket and mark it as approved"""
+    from sqlalchemy import text
+
+    # Insert ground truth
+    db.execute(
+        text("""
+            INSERT INTO ticket_ground_truth
+            (ticket_id, corrected_merchant, corrected_date, corrected_amount, corrected_items, corrected_by)
+            VALUES (:ticket_id, :merchant, :date, :amount, :items, :corrected_by)
+            ON CONFLICT (ticket_id) DO UPDATE SET
+                corrected_merchant = :merchant,
+                corrected_date = :date,
+                corrected_amount = :amount,
+                corrected_items = :items,
+                corrected_by = :corrected_by
+        """),
+        {
+            "ticket_id": ticket_id,
+            "merchant": corrected_merchant,
+            "date": corrected_date,
+            "amount": corrected_amount,
+            "items": corrected_items,
+            "corrected_by": corrected_by
+        }
+    )
+
+    # Update ticket to mark as approved and has_ground_truth
+    db.execute(
+        text("""
+            UPDATE tickets
+            SET approved = TRUE, has_ground_truth = TRUE
+            WHERE id = :ticket_id
+        """),
+        {"ticket_id": ticket_id}
+    )
+
+    db.commit()
