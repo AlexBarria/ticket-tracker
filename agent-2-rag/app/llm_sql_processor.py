@@ -1,6 +1,3 @@
-"""
-Defines an SQL RAG agent that retrieves data from a SQL DB using natural language queries.
-"""
 import json
 import os
 from urllib.request import Request, urlopen
@@ -66,26 +63,26 @@ class SQLRagAgent:
         self._process_schema()
         logger.info("SQLRagAgent initialized with processed schema.")
 
-    def query(self, question: str) -> list[dict]:
+    def query(self, question: str) -> tuple[list[dict], int]:
         """
         Processes a natural language question, generates an SQL query, executes it, and returns the results.
 
         Args:
             question (str): The natural language question to be answered.
         Returns:
-            list[dict]: The results of the executed SQL query.
+            tuple[list[dict], int]: The results of the executed SQL query and token count.
         Raises:
             Exception: If there is an error in generating or executing the SQL query.
         """
         try:
             logger.info(f"Processing question: {question}")
-            sql_query = self._get_sql_query(question)
-            logger.info(f"Generated SQL Query: {sql_query}")
+            sql_query, tokens = self._get_sql_query(question)
+            logger.info(f"Generated SQL Query: {sql_query} (used {tokens} tokens)")
             if os.getenv("GUARDRAILS_ENABLED", "false").lower() == "true":
                 self._validate(sql_query)
             results = self.repository.execute_query(sql_query)
             logger.info(f"Query executed successfully, results: {results}")
-            return results
+            return results, tokens
         except Exception as e:
             logger.error(f"An error occurred while processing the query: {e}")
             raise
@@ -103,7 +100,7 @@ class SQLRagAgent:
             self.schema += "\n\n"
         logger.info(f"Processed schema: {self.schema}")
 
-    def _get_sql_query(self, raw_text: str) -> str:
+    def _get_sql_query(self, raw_text: str) -> tuple[str, int]:
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -112,6 +109,9 @@ class SQLRagAgent:
             ]
         )
         sql_query = response.choices[0].message.content
+
+        # Get token count
+        token_count = response.usage.total_tokens if response.usage else 0
 
         # Strip markdown code fences if present
         sql_query = sql_query.strip()
@@ -122,7 +122,7 @@ class SQLRagAgent:
         if sql_query.endswith("```"):
             sql_query = sql_query[:-3]  # Remove trailing ```
 
-        return sql_query.strip()
+        return sql_query.strip(), token_count
 
     @staticmethod
     def _validate(sql_query: str):

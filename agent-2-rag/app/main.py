@@ -58,14 +58,57 @@ def read_root():
 
 
 @app.post("/ask")
-def ask(query: dict, user_role: str = Depends(get_user_role)):
+def ask(query: dict, token: str = Depends(oauth2_scheme), user_role: str = Depends(get_user_role)):
+    import time
+    import psycopg2
+
     if 'admin' not in user_role:
         raise HTTPException(status_code=403, detail="You do not have permission to access this resource.")
+
+    question = query.get("query")
+    if not question:
+        raise HTTPException(status_code=400, detail="Query parameter is required.")
+
+    start_time = time.time()
+    success = True
+    token_count = 0
+    user_id = None
+
     try:
-        question = query.get("query")
-        if not question:
-            raise HTTPException(status_code=400, detail="Query parameter is required.")
-        answer = agent_pipeline.run(question)
-        return {"answer": answer}
+        # Extract user_id from token
+        import jwt
+        payload = jwt.decode(token, options={"verify_signature": False})
+        user_id = payload.get("sub", "unknown")
+
+        # Run the pipeline and get token count
+        answer, token_count = agent_pipeline.run(question)
+
+        return {"answer": answer, "tokens_used": token_count}
+
     except Exception as e:
+        success = False
         raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
+
+    finally:
+        # Log the query with token usage
+        try:
+            response_time_ms = int((time.time() - start_time) * 1000)
+
+            # Convert SQLAlchemy DSN to psycopg2 format
+            db_url = os.getenv("DATABASE_URL").replace("postgresql+psycopg2://", "postgresql://")
+
+            conn = psycopg2.connect(db_url)
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO agent2_query_logs (query_text, user_id, token_count, response_time_ms, success)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (question, user_id, token_count, response_time_ms, success)
+            )
+            conn.commit()
+            cursor.close()
+            conn.close()
+        except Exception as log_error:
+            # Don't fail the request if logging fails
+            print(f"Failed to log query: {log_error}")

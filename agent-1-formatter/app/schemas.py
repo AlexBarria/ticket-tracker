@@ -14,6 +14,7 @@ class TicketCreate(BaseModel):
     total_amount: float
     category: str
     items: List[Item]
+    token_count: Optional[int] = 0
 
 
 class TicketResponse(TicketCreate):

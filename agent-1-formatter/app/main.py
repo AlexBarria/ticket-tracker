@@ -262,3 +262,40 @@ def get_image(
         return Response(content=image_bytes, media_type=mime_type)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Image not found: {str(e)}")
+
+
+@app.get("/api/tickets/all")
+def get_all_tickets(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Get all tickets from the database for admin dashboard.
+    Returns all fields including approval status and verification flags.
+    """
+    try:
+        # Query all tickets ordered by ID descending
+        tickets = db.query(models.Ticket).order_by(models.Ticket.id.desc()).all()
+
+        # Convert to list of dicts
+        result = []
+        for ticket in tickets:
+            result.append({
+                "id": ticket.id,
+                "merchant_name": ticket.merchant_name,
+                "transaction_date": str(ticket.transaction_date) if ticket.transaction_date else None,
+                "total_amount": float(ticket.total_amount) if ticket.total_amount else 0.0,
+                "category": ticket.category,
+                "items": ticket.items,
+                "s3_path": ticket.s3_path,
+                "user_id": ticket.user_id,
+                "need_verify": ticket.need_verify,
+                "approved": ticket.approved,
+                "has_ground_truth": ticket.has_ground_truth
+            })
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error fetching all tickets: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching tickets: {str(e)}")

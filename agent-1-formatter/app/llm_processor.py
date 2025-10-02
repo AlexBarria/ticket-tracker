@@ -87,11 +87,16 @@ def structure_receipt_text(raw_text: str) -> TicketCreate:
                 {"role": "user", "content": prompt}
             ]
         )
-        
+
         response_json = json.loads(response.choices[0].message.content)
-        
+
         # Validate the response with our Pydantic model
         validated_data = TicketCreate(**response_json)
+
+        # Track token usage
+        token_usage = response.usage
+        validated_data.token_count = token_usage.total_tokens if token_usage else 0
+
         return validated_data
 
     except Exception as e:

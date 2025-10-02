@@ -40,6 +40,10 @@ class MetricsSummaryResponse(BaseModel):
     avg_context_recall: Optional[float]
     avg_response_time_ms: Optional[float]
 
+    # Token consumption metrics
+    total_tokens: Optional[int] = 0
+    avg_tokens_per_query: Optional[float] = 0
+
     class Config:
         json_encoders = {
             float: lambda v: None if (v is not None and (math.isnan(v) or math.isinf(v))) else v
@@ -149,6 +153,15 @@ async def get_metrics_summary(db: Session = Depends(get_db)):
         avg_context_precision = sum(context_precision_scores) / len(context_precision_scores) if context_precision_scores else None
         avg_context_recall = sum(context_recall_scores) / len(context_recall_scores) if context_recall_scores else None
 
+        # Calculate token statistics
+        total_tokens = db.query(func.sum(EvaluationRun.total_tokens)).filter(
+            EvaluationRun.status == "completed"
+        ).scalar() or 0
+
+        avg_tokens = db.query(func.avg(EvaluationRun.average_tokens_per_query)).filter(
+            EvaluationRun.status == "completed"
+        ).scalar() or 0
+
         return MetricsSummaryResponse(
             latest_run_id=str(latest_run.run_id) if latest_run else None,
             latest_run_date=latest_run.completed_at if latest_run else None,
@@ -163,7 +176,9 @@ async def get_metrics_summary(db: Session = Depends(get_db)):
             avg_answer_relevance=safe_float(avg_answer_relevance),
             avg_context_precision=safe_float(avg_context_precision),
             avg_context_recall=safe_float(avg_context_recall),
-            avg_response_time_ms=safe_float(avg_response_time)
+            avg_response_time_ms=safe_float(avg_response_time),
+            total_tokens=int(total_tokens) if total_tokens else 0,
+            avg_tokens_per_query=float(avg_tokens) if avg_tokens else 0.0
         )
 
     except Exception as e:
@@ -377,6 +392,10 @@ class Agent1MetricsSummaryResponse(BaseModel):
     avg_overall_quality: Optional[float]
     avg_processing_time_ms: Optional[float]
 
+    # Token consumption metrics
+    total_tokens_used: Optional[int] = 0
+    avg_tokens_per_evaluation: Optional[float] = 0
+
 
 class Agent1TrendDataPoint(BaseModel):
     date: datetime
@@ -471,6 +490,15 @@ async def get_agent1_metrics_summary(db: Session = Depends(get_db)):
         def avg_or_none(scores):
             return sum(scores) / len(scores) if scores else None
 
+        # Calculate token statistics
+        total_tokens = db.query(func.sum(Agent1EvaluationRun.total_tokens)).filter(
+            Agent1EvaluationRun.status == "completed"
+        ).scalar() or 0
+
+        avg_tokens = db.query(func.avg(Agent1EvaluationRun.average_tokens_per_ticket)).filter(
+            Agent1EvaluationRun.status == "completed"
+        ).scalar() or 0
+
         return Agent1MetricsSummaryResponse(
             latest_run_id=str(latest_run.run_id) if latest_run else None,
             latest_run_date=latest_run.completed_at if latest_run else None,
@@ -493,7 +521,9 @@ async def get_agent1_metrics_summary(db: Session = Depends(get_db)):
             avg_merchant_similarity=safe_float(avg_or_none(merchant_similarity_scores)),
             avg_items_similarity=safe_float(avg_or_none(items_similarity_scores)),
             avg_overall_quality=safe_float(avg_or_none(overall_quality_scores)),
-            avg_processing_time_ms=safe_float(avg_processing_time)
+            avg_processing_time_ms=safe_float(avg_processing_time),
+            total_tokens_used=int(total_tokens) if total_tokens else 0,
+            avg_tokens_per_evaluation=float(avg_tokens) if avg_tokens else 0.0
         )
 
     except Exception as e:
@@ -589,3 +619,75 @@ async def get_agent1_runs(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get Agent 1 runs: {str(e)}")
+
+
+# ==================== Agent 2 Operational Metrics Endpoints ====================
+
+class Agent2OperationalMetrics(BaseModel):
+    total_queries: int
+    successful_queries: int
+    failed_queries: int
+    total_tokens: int
+    avg_tokens_per_query: float
+    total_response_time_ms: int
+    avg_response_time_ms: float
+    estimated_cost: float
+
+
+@router.get("/agent2/operational", response_model=Agent2OperationalMetrics)
+async def get_agent2_operational_metrics(
+    days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get operational metrics for Agent 2 from actual query logs
+
+    - **days**: Number of days to look back (1-365)
+    """
+    try:
+        from sqlalchemy import text
+        from datetime import datetime, timedelta
+
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+
+        # Query agent2_query_logs table
+        query = text("""
+            SELECT
+                COUNT(*) as total_queries,
+                COUNT(*) FILTER (WHERE success = true) as successful_queries,
+                COUNT(*) FILTER (WHERE success = false) as failed_queries,
+                COALESCE(SUM(token_count), 0) as total_tokens,
+                COALESCE(AVG(token_count), 0) as avg_tokens,
+                COALESCE(SUM(response_time_ms), 0) as total_response_ms,
+                COALESCE(AVG(response_time_ms), 0) as avg_response_ms
+            FROM agent2_query_logs
+            WHERE created_at >= :cutoff_date
+        """)
+
+        result = db.execute(query, {"cutoff_date": cutoff_date}).fetchone()
+
+        total_queries = result[0] or 0
+        successful_queries = result[1] or 0
+        failed_queries = result[2] or 0
+        total_tokens = result[3] or 0
+        avg_tokens = result[4] or 0
+        total_response_ms = result[5] or 0
+        avg_response_ms = result[6] or 0
+
+        # Estimate cost (GPT-4o pricing: ~$2.50/1M input, ~$10/1M output)
+        # Using conservative average of $6/1M tokens
+        estimated_cost = (total_tokens / 1_000_000) * 6.0
+
+        return Agent2OperationalMetrics(
+            total_queries=total_queries,
+            successful_queries=successful_queries,
+            failed_queries=failed_queries,
+            total_tokens=total_tokens,
+            avg_tokens_per_query=float(avg_tokens),
+            total_response_time_ms=total_response_ms,
+            avg_response_time_ms=float(avg_response_ms),
+            estimated_cost=estimated_cost
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get Agent 2 operational metrics: {str(e)}")

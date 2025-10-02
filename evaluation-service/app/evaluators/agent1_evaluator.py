@@ -1,11 +1,3 @@
-"""
-Agent 1 (OCR/Formatter) Evaluator
-
-This module evaluates the performance of Agent 1 (OCR + Formatter) using:
-1. Deterministic metrics: Exact matches and item-level F1 scores
-2. LLM-as-a-Judge: Semantic similarity and quality assessment
-"""
-
 import asyncio
 import json
 import time
@@ -151,19 +143,38 @@ class Agent1Evaluator:
 
     # ==================== LLM-AS-JUDGE METRICS ====================
 
-    def llm_evaluate_merchant_similarity(self, expected: str, actual: str) -> float:
-        """Use LLM to evaluate semantic similarity of merchant names"""
-        prompt = f"""You are evaluating OCR extraction quality. Compare these two merchant names and rate their similarity on a scale of 0.0 to 1.0.
+    def llm_evaluate_merchant_similarity(self, expected: str, actual: str) -> Tuple[float, int]:
+        """Use LLM to evaluate semantic similarity of merchant names
+        Returns: (similarity_score, token_count)
+        """
+        prompt = f"""You are evaluating OCR extraction quality. Rate the similarity between these two merchant names on a scale of 0.0 to 1.0.
 
-Expected merchant name: "{expected}"
-Actual extracted name: "{actual}"
+Expected: "{expected}"
+Actual: "{actual}"
 
-Consider:
-- Case differences (e.g., "BELLA PASTA" vs "Bella Pasta") should score high
-- Minor typos or OCR errors should still score reasonably high
-- Completely different merchants should score low
+Scoring Guide:
+- 1.0 = Perfect match (identical)
+- 0.9-0.95 = Same merchant, only case/spacing differences (e.g., "WALMART" vs "Walmart")
+- 0.8-0.85 = Same merchant, minor OCR errors (1-2 character substitutions like I→L, O→0)
+- 0.7-0.75 = Same merchant, moderate OCR errors (3-4 character substitutions or missing characters)
+- 0.5-0.65 = Recognizable as same merchant but significant errors
+- 0.0-0.4 = Different merchants entirely
 
-Respond with ONLY a number between 0.0 and 1.0, nothing else."""
+Common OCR Confusions to Treat as High Similarity:
+- I vs L vs 1
+- O vs 0
+- S vs 5
+- B vs 8
+- Mixed/wrong capitalization
+- Missing or extra spaces
+
+Examples:
+"GRAND LUX CAFE" vs "GRAND IIXEAFE" → 0.75
+"Walmart" vs "WALMART" → 0.95
+"Starbucks" vs "Target" → 0.0
+"GREEN FIELD" vs "greEN FteLD" → 0.80
+
+Output ONLY the numeric score (e.g., 0.85). No explanation, no text, just the number."""
 
         try:
             response = self.openai_client.chat.completions.create(
@@ -174,31 +185,57 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
 
             score_str = response.choices[0].message.content.strip()
             score = float(score_str)
-            return max(0.0, min(1.0, score))  # Clamp to [0, 1]
+            tokens = response.usage.total_tokens if response.usage else 0
+            return max(0.0, min(1.0, score)), tokens
 
         except Exception as e:
             logger.error(f"LLM evaluation error: {e}")
             # Fallback to simple string similarity
-            return 1.0 if expected.lower() == actual.lower() else 0.0
+            return (1.0 if expected.lower() == actual.lower() else 0.0), 0
 
-    def llm_evaluate_items_similarity(self, expected_items: List[Dict], actual_items: List[Dict]) -> float:
-        """Use LLM to evaluate item extraction quality"""
-        prompt = f"""You are evaluating OCR item extraction quality. Compare the expected items with the actual extracted items.
+    def llm_evaluate_items_similarity(self, expected_items: List[Dict], actual_items: List[Dict]) -> Tuple[float, int]:
+        """Use LLM to evaluate item extraction quality
+        Returns: (similarity_score, token_count)
+        """
+        prompt = f"""Rate the quality of item extraction from a receipt. Compare expected vs actual items.
 
-Expected items:
+Expected Items:
 {json.dumps(expected_items, indent=2)}
 
-Actual extracted items:
+Actual Extracted Items:
 {json.dumps(actual_items, indent=2)}
 
-Evaluate how well the actual extraction matches the expected items, considering:
-- Item descriptions may have minor OCR errors but convey the same meaning
-- Prices should match closely
-- Missing items reduce the score
-- Extra incorrect items reduce the score
+Scoring Guide (0.0-1.0):
+- 1.0 = Perfect match (all items correct, prices exact)
+- 0.9-0.95 = All items found, prices within $0.50, minor description errors
+- 0.8-0.85 = All items found, some prices off by $1-2, moderate OCR errors
+- 0.7-0.75 = 1-2 items missing OR extra, or significant price errors ($3+)
+- 0.5-0.65 = Half the items correct, major errors
+- 0.3-0.4 = Few items correct, mostly wrong
+- 0.0-0.2 = Almost nothing correct
 
-Rate the overall item extraction quality on a scale of 0.0 to 1.0.
-Respond with ONLY a number between 0.0 and 1.0, nothing else."""
+Evaluation Criteria:
+- Missing items: Reduce score significantly (each missing item = -0.15)
+- Extra wrong items: Reduce score moderately (each wrong item = -0.10)
+- Description OCR errors: Reduce score slightly if meaning is preserved
+  (e.g., "Cofee" vs "Coffee" = minor, "Bread" vs "Meat" = major)
+- Price accuracy: Must be within $1.00 for high scores
+- Item order doesn't matter
+
+Examples:
+Expected: [{{"description": "Coffee", "price": 3.50}}, {{"description": "Muffin", "price": 4.00}}]
+Actual: [{{"description": "Cofee", "price": 3.50}}, {{"description": "Muffin", "price": 4.00}}]
+Score: 0.95 (minor OCR error in description)
+
+Expected: [{{"description": "Coffee", "price": 3.50}}, {{"description": "Muffin", "price": 4.00}}]
+Actual: [{{"description": "Coffee", "price": 3.50}}]
+Score: 0.50 (one item missing = 50% recall)
+
+Expected: [{{"description": "Lunch", "price": 45.90}}]
+Actual: [{{"description": "Lunch Special", "price": 45.90}}]
+Score: 0.90 (description close enough, price exact)
+
+Output ONLY the numeric score (e.g., 0.85). No explanation, no text, just the number."""
 
         try:
             response = self.openai_client.chat.completions.create(
@@ -210,17 +247,20 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
 
             score_str = response.choices[0].message.content.strip()
             score = float(score_str)
-            return max(0.0, min(1.0, score))
+            tokens = response.usage.total_tokens if response.usage else 0
+            return max(0.0, min(1.0, score)), tokens
 
         except Exception as e:
             logger.error(f"LLM items evaluation error: {e}")
             # Fallback to deterministic F1 score
             _, _, f1 = self.calculate_item_metrics(expected_items, actual_items)
-            return f1
+            return f1, 0
 
-    def llm_evaluate_overall_quality(self, expected: Dict, actual: Dict) -> Tuple[float, str]:
-        """Use LLM to evaluate overall extraction quality and provide feedback"""
-        prompt = f"""You are evaluating OCR extraction quality for a receipt. Compare the expected data with the actual extracted data.
+    def llm_evaluate_overall_quality(self, expected: Dict, actual: Dict) -> Tuple[float, str, int]:
+        """Use LLM to evaluate overall extraction quality and provide feedback
+        Returns: (quality_score, feedback, token_count)
+        """
+        prompt = f"""Evaluate OCR receipt extraction quality by comparing expected vs actual data.
 
 Expected:
 {json.dumps(expected, indent=2)}
@@ -228,15 +268,43 @@ Expected:
 Actual:
 {json.dumps(actual, indent=2)}
 
-Provide:
-1. An overall quality score from 0.0 to 1.0
-2. Brief feedback on what was extracted well and what needs improvement
+Scoring Guide (0.0-1.0):
+- 1.0 = Perfect: All fields correct
+- 0.9 = Excellent: All fields present, minor OCR errors only
+- 0.8 = Good: All fields present, some moderate OCR errors or small price discrepancies (<$2)
+- 0.7 = Fair: 1 field missing/wrong, or major errors in descriptions
+- 0.6 = Poor: 2+ fields missing/wrong
+- 0.5 = Very Poor: Multiple critical errors
+- <0.5 = Failed: Mostly incorrect
 
-Format your response as JSON:
+Field Importance (for scoring):
+- Merchant name: Critical (30%)
+- Total amount: Critical (30%)
+- Transaction date: Important (20%)
+- Items: Important (20%)
+
+Evaluation Checklist:
+✓ Merchant name: Exact match or semantically equivalent?
+✓ Total amount: Within $0.50?
+✓ Date: Correct format and value?
+✓ Items: All captured? Prices match?
+
+Examples:
+Expected: {{"merchant_name":"Walmart","total_amount":45.67,"date":"2024-09-15","items":[...]}}
+Actual: {{"merchant_name":"WALMART","total_amount":45.67,"date":"2024-09-15","items":[...]}}
+Score: 0.95, Feedback: "Excellent extraction. Only merchant name capitalization differs."
+
+Expected: {{"merchant_name":"Starbucks","total_amount":12.50,"date":"2024-09-15","items":[{{"description":"Coffee","price":3.50}}]}}
+Actual: {{"merchant_name":"Strbucks","total_amount":12.50,"date":"2024-09-15","items":[]}}
+Score: 0.65, Feedback: "Merchant has minor OCR error. Date and total correct. Critical issue: No items extracted."
+
+Respond with ONLY this JSON:
 {{
-  "score": 0.X,
-  "feedback": "Brief assessment..."
-}}"""
+  "score": 0.85,
+  "feedback": "Brief assessment of what was correct and what had errors"
+}}
+
+Keep feedback under 100 words, focused on actionable issues."""
 
         try:
             response = self.openai_client.chat.completions.create(
@@ -249,11 +317,12 @@ Format your response as JSON:
             result = json.loads(response.choices[0].message.content)
             score = float(result.get("score", 0.0))
             feedback = result.get("feedback", "")
-            return max(0.0, min(1.0, score)), feedback
+            tokens = response.usage.total_tokens if response.usage else 0
+            return max(0.0, min(1.0, score)), feedback, tokens
 
         except Exception as e:
             logger.error(f"LLM overall evaluation error: {e}")
-            return 0.5, "Evaluation error occurred"
+            return 0.5, "Evaluation error occurred", 0
 
     # ==================== EVALUATION ORCHESTRATION ====================
 
@@ -306,15 +375,18 @@ Format your response as JSON:
 
             # Calculate LLM-as-judge metrics
             logger.info(f"Running LLM evaluation for ticket {ticket_id}")
-            merchant_similarity = self.llm_evaluate_merchant_similarity(
+            merchant_similarity, tokens_merchant = self.llm_evaluate_merchant_similarity(
                 expected.get("merchant_name", ""), actual["merchant_name"]
             )
-            items_similarity = self.llm_evaluate_items_similarity(
+            items_similarity, tokens_items = self.llm_evaluate_items_similarity(
                 expected.get("items", []), actual["items"]
             )
-            overall_quality, llm_feedback = self.llm_evaluate_overall_quality(expected, actual)
+            overall_quality, llm_feedback, tokens_overall = self.llm_evaluate_overall_quality(expected, actual)
 
-            logger.info(f"Evaluation completed for ticket {ticket_id}")
+            # Sum total tokens used in LLM evaluations
+            total_tokens = tokens_merchant + tokens_items + tokens_overall
+
+            logger.info(f"Evaluation completed for ticket {ticket_id} (used {total_tokens} tokens)")
 
         except Exception as e:
             logger.error(f"Error evaluating ticket {ticket_id}: {str(e)}")
@@ -328,6 +400,7 @@ Format your response as JSON:
             item_precision = item_recall = item_f1 = 0.0
             merchant_similarity = items_similarity = overall_quality = 0.0
             llm_feedback = ""
+            total_tokens = 0
 
         # Prepare result dictionary
         result = {
@@ -346,6 +419,7 @@ Format your response as JSON:
             "overall_quality": overall_quality,
             "llm_feedback": llm_feedback,
             "processing_time_ms": processing_time_ms,
+            "token_count": total_tokens,
             "evaluation_status": evaluation_status,
             "error_message": error_message
         }
@@ -385,6 +459,7 @@ Format your response as JSON:
             result = await self.evaluate_single_ticket(ticket_id, expected, run_id, db)
 
             # Update run with results
+            token_count = result.get("token_count", 0)
             db.update_agent1_evaluation_run(
                 run_id=run_id,
                 status="completed",
@@ -399,7 +474,9 @@ Format your response as JSON:
                 average_item_f1=result.get("item_f1", 0.0),
                 average_merchant_similarity=result.get("merchant_similarity", 0.0),
                 average_items_similarity=result.get("items_similarity", 0.0),
-                average_overall_quality=result.get("overall_quality", 0.0)
+                average_overall_quality=result.get("overall_quality", 0.0),
+                total_tokens=token_count,
+                average_tokens_per_ticket=float(token_count)
             )
 
             return {

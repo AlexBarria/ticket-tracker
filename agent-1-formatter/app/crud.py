@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from . import models, schemas
 
-
 def create_ticket(db: Session, ticket_data: schemas.TicketCreate, s3_path: str, user_id: str):
     # Convert Pydantic items to a list of dicts for JSON storage
     items_as_dicts = [item.dict() for item in ticket_data.items]
@@ -15,7 +14,8 @@ def create_ticket(db: Session, ticket_data: schemas.TicketCreate, s3_path: str, 
         s3_path=s3_path,
         user_id=user_id,
         need_verify=False,
-        approved=False
+        approved=False,
+        token_count=ticket_data.token_count
     )
     db.add(db_ticket)
     db.commit()

@@ -1,4 +1,3 @@
-# ui/app/pages/3_Metrics_Dashboard.py
 import streamlit as st
 import requests
 import pandas as pd
@@ -9,6 +8,81 @@ import json
 
 # Set page configuration
 st.set_page_config(page_title="Metrics Dashboard", layout="wide")
+
+# Apply consistent blue sidebar styling
+st.markdown("""
+<style>
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 100%);
+    }
+
+    [data-testid="stSidebar"] * {
+        color: white !important;
+    }
+
+    /* Sidebar buttons - make them visible with background */
+    [data-testid="stSidebar"] button {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        color: white !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+    }
+
+    [data-testid="stSidebar"] button:hover {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+        border-color: rgba(255, 255, 255, 0.5) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    [data-testid="stSidebar"] button p {
+        color: white !important;
+    }
+
+    /* Sidebar selectbox - make them visible */
+    [data-testid="stSidebar"] [data-baseweb="select"] {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    }
+
+    [data-testid="stSidebar"] [data-baseweb="select"] > div {
+        background-color: transparent !important;
+        color: white !important;
+    }
+
+    /* Sidebar slider */
+    [data-testid="stSidebar"] [data-testid="stSlider"] {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+    }
+
+    /* Make selectbox options readable */
+    [data-baseweb="popover"] {
+        background-color: white !important;
+    }
+
+    [data-baseweb="popover"] * {
+        color: #1f2937 !important;
+    }
+
+    /* Fix main content buttons - ensure text is visible */
+    div[data-testid="stMainBlockContainer"] button {
+        color: #1f2937 !important;
+    }
+
+    div[data-testid="stMainBlockContainer"] button:hover {
+        color: #111827 !important;
+    }
+
+    /* Ensure button text in main area is dark */
+    div[data-testid="stMainBlockContainer"] .stButton > button p {
+        color: #1f2937 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- Security Guard ---
 # Check if the user is logged in
@@ -94,6 +168,26 @@ def show_agent1_metrics():
 
         st.markdown("---")
 
+        # Token consumption metrics
+        st.subheader("🪙 Token Consumption")
+        token_col1, token_col2, token_col3 = st.columns(3)
+
+        with token_col1:
+            total_tokens = agent1_summary.get("total_tokens_used", 0)
+            st.metric("📊 Total Tokens", f"{total_tokens:,}")
+
+        with token_col2:
+            avg_tokens = agent1_summary.get("avg_tokens_per_evaluation", 0)
+            st.metric("📈 Avg Tokens/Eval", f"{avg_tokens:.0f}")
+
+        with token_col3:
+            # Estimate cost (assuming GPT-4o-mini pricing: ~$0.15/1M input, ~$0.60/1M output)
+            # Using average of $0.375/1M tokens
+            estimated_cost = (total_tokens / 1_000_000) * 0.375
+            st.metric("💵 Est. Cost", f"${estimated_cost:.4f}")
+
+        st.markdown("---")
+
         # Detailed metrics section
         st.subheader("📈 Detailed Metrics")
 
@@ -116,7 +210,7 @@ def show_agent1_metrics():
             st.metric("⚖️ F1 Score", f"{item_f1:.1%}")
 
         with metric_col3:
-            st.write("**LLM Quality Assessment**")
+            st.write("**LLM-as-a-Judge**")
             merchant_sim = agent1_summary.get("avg_merchant_similarity", 0)
             items_sim = agent1_summary.get("avg_items_similarity", 0)
             st.metric("🔤 Merchant Similarity", f"{merchant_sim:.1%}")
@@ -215,7 +309,7 @@ def main():
     # Add tabs for different agent evaluations
     metric_category = st.selectbox(
         "📈 Metric Category:",
-        ["🧾 Agent 1 (OCR)", "🤖 Agent 2 (RAG)"],
+        ["Agent 1 (OCR)", "Agent 2 (RAG)"],
         help="Select which agent evaluation to view"
     )
 
@@ -238,7 +332,7 @@ def main():
         st.rerun()
 
     # === AGENT 1 (OCR) METRICS ===
-    if metric_category == "🧾 Agent 1 (OCR)":
+    if metric_category == "Agent 1 (OCR)":
         show_agent1_metrics()
         return
 
@@ -334,7 +428,41 @@ def main():
                     delta=None
                 )
 
+    # Token consumption metrics for Agent 2 - Operational Usage
+    st.markdown("---")
+    st.subheader("🪙 Operational Token Consumption (Agent 2)")
+    st.caption("Live token usage from actual user queries (not evaluation)")
+
+    # Fetch operational metrics
+    operational_data = fetch_data("/api/v1/metrics/agent2/operational?days=30")
+
+    if operational_data:
+        token_col1, token_col2, token_col3, token_col4 = st.columns(4)
+
+        with token_col1:
+            total_queries = operational_data.get("total_queries", 0)
+            st.metric("📊 Total Queries", f"{total_queries:,}")
+
+        with token_col2:
+            total_tokens_operational = operational_data.get("total_tokens", 0)
+            st.metric("🔢 Total Tokens", f"{total_tokens_operational:,}")
+
+        with token_col3:
+            avg_tokens_operational = operational_data.get("avg_tokens_per_query", 0)
+            st.metric("📈 Avg Tokens/Query", f"{avg_tokens_operational:.0f}")
+
+        with token_col4:
+            estimated_cost_operational = operational_data.get("estimated_cost", 0)
+            st.metric("💵 Est. Cost", f"${estimated_cost_operational:.4f}")
+
+        # Performance metrics
+        st.caption(f"⏱️ Avg Response Time: {operational_data.get('avg_response_time_ms', 0):.0f}ms | "
+                   f"✅ Success Rate: {(operational_data.get('successful_queries', 0) / max(total_queries, 1) * 100):.1f}%")
+    else:
+        st.info("No operational query data available yet. Ask Agent 2 some questions to see metrics here!")
+
     # Agent 2 RAG Evaluation metrics
+    st.markdown("---")
     tab1, tab2, tab3, tab4 = st.tabs(["📊 Overview", "📈 Trends", "🏃 Recent Runs", "⚙️ System Status"])
 
     with tab1:

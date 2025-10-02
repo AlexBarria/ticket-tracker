@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     need_verify BOOLEAN,
     approved BOOLEAN,
     has_ground_truth BOOLEAN DEFAULT FALSE,
+    token_count INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -62,6 +63,8 @@ CREATE TABLE IF NOT EXISTS evaluation_runs (
     average_answer_relevance NUMERIC(5, 4),
     average_context_precision NUMERIC(5, 4),
     average_context_recall NUMERIC(5, 4),
+    total_tokens INT DEFAULT 0,
+    average_tokens_per_query NUMERIC(10, 2) DEFAULT 0,
     metadata JSONB
 );
 
@@ -82,7 +85,7 @@ CREATE TABLE IF NOT EXISTS evaluation_results (
     context_recall_score NUMERIC(5, 4),
 
     response_time_ms INT,
-    token_count INT,
+    token_count INT DEFAULT 0,
     evaluation_status VARCHAR(20),
     error_message TEXT,
     created_at TIMESTAMP DEFAULT NOW()
@@ -128,6 +131,10 @@ CREATE TABLE IF NOT EXISTS agent1_evaluation_runs (
     average_items_similarity NUMERIC(5, 4),
     average_overall_quality NUMERIC(5, 4),
 
+    -- Token consumption metrics
+    total_tokens INT,
+    average_tokens_per_ticket NUMERIC(10, 2),
+
     run_metadata JSONB
 );
 
@@ -165,6 +172,7 @@ CREATE TABLE IF NOT EXISTS agent1_evaluation_results (
     llm_feedback TEXT,
 
     processing_time_ms INT,
+    token_count INT DEFAULT 0,
     evaluation_status VARCHAR(20),
     error_message TEXT,
     created_at TIMESTAMP DEFAULT NOW()
@@ -186,3 +194,20 @@ COMMENT ON COLUMN agent1_evaluation_results.item_precision IS 'Precision score f
 COMMENT ON COLUMN agent1_evaluation_results.item_recall IS 'Recall score for extracted items';
 COMMENT ON COLUMN agent1_evaluation_results.merchant_similarity_score IS 'LLM-judged semantic similarity for merchant name';
 COMMENT ON COLUMN agent1_evaluation_results.overall_quality_score IS 'LLM-judged overall extraction quality';
+
+-- Operational token tracking for Agent 2 queries
+CREATE TABLE IF NOT EXISTS agent2_query_logs (
+    id SERIAL PRIMARY KEY,
+    query_text TEXT NOT NULL,
+    user_id VARCHAR(255),
+    token_count INT DEFAULT 0,
+    response_time_ms INT,
+    success BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent2_query_logs_created ON agent2_query_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent2_query_logs_user ON agent2_query_logs(user_id);
+
+COMMENT ON TABLE agent2_query_logs IS 'Operational logs for Agent 2 RAG queries including token usage';
+COMMENT ON COLUMN agent2_query_logs.token_count IS 'Tokens consumed for this query';

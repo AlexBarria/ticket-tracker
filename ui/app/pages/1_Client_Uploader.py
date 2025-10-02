@@ -1,9 +1,83 @@
-# ui/app/pages/1_Client_Uploader.py
 import streamlit as st
 import requests
 import json
 
 st.set_page_config(page_title="Upload Ticket", layout="wide")
+
+# Apply consistent blue sidebar styling
+st.markdown("""
+<style>
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 100%);
+    }
+
+    [data-testid="stSidebar"] * {
+        color: white !important;
+    }
+
+    /* Sidebar buttons - make them visible with background */
+    [data-testid="stSidebar"] button {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        color: white !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+    }
+
+    [data-testid="stSidebar"] button:hover {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+        border-color: rgba(255, 255, 255, 0.5) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    [data-testid="stSidebar"] button p {
+        color: white !important;
+    }
+
+    /* Sidebar selectbox - make them visible */
+    [data-testid="stSidebar"] [data-baseweb="select"] {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    }
+
+    [data-testid="stSidebar"] [data-baseweb="select"] > div {
+        background-color: transparent !important;
+        color: white !important;
+    }
+
+    /* Sidebar slider */
+    [data-testid="stSidebar"] [data-testid="stSlider"] {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+    }
+
+    /* Make selectbox options readable */
+    [data-baseweb="popover"] {
+        background-color: white !important;
+    }
+
+    [data-baseweb="popover"] * {
+        color: #1f2937 !important;
+    }
+
+    /* Fix main content buttons - ensure text is visible */
+    div[data-testid="stMainBlockContainer"] button {
+        color: #1f2937 !important;
+    }
+
+    div[data-testid="stMainBlockContainer"] button:hover {
+        color: #111827 !important;
+    }
+
+    /* Ensure button text in main area is dark */
+    div[data-testid="stMainBlockContainer"] .stButton > button p {
+        color: #1f2937 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- Security Guard ---
 # Check if the user is logged in

@@ -16,3 +16,4 @@ class Ticket(Base):
     need_verify = Column(Boolean)
     approved = Column(Boolean, nullable=True)
     has_ground_truth = Column(Boolean, default=False, nullable=True)
+    token_count = Column(Integer, default=0)

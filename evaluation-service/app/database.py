@@ -30,6 +30,8 @@ class EvaluationRun(Base):
     average_answer_relevance = Column(Numeric(5, 4), nullable=True)
     average_context_precision = Column(Numeric(5, 4), nullable=True)
     average_context_recall = Column(Numeric(5, 4), nullable=True)
+    total_tokens = Column(Integer, default=0)
+    average_tokens_per_query = Column(Numeric(10, 2), default=0)
     run_metadata = Column(JSONB, nullable=True)
 
     # Relationship
@@ -89,6 +91,10 @@ class Agent1EvaluationRun(Base):
     average_items_similarity = Column(Numeric(5, 4), nullable=True)
     average_overall_quality = Column(Numeric(5, 4), nullable=True)
 
+    # Token consumption metrics
+    total_tokens = Column(Integer, default=0)
+    average_tokens_per_ticket = Column(Numeric(10, 2), default=0)
+
     run_metadata = Column(JSONB, nullable=True)
 
     # Relationship
@@ -130,6 +136,7 @@ class Agent1EvaluationResult(Base):
     llm_feedback = Column(Text, nullable=True)
 
     processing_time_ms = Column(Integer, nullable=True)
+    token_count = Column(Integer, default=0)
     evaluation_status = Column(String(20), nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -173,6 +180,8 @@ class EvaluationDB:
         average_answer_relevance: Optional[float] = None,
         average_context_precision: Optional[float] = None,
         average_context_recall: Optional[float] = None,
+        total_tokens: Optional[int] = None,
+        average_tokens_per_query: Optional[float] = None,
         run_metadata: Optional[dict] = None
     ) -> Optional[EvaluationRun]:
         db_run = self.db.query(EvaluationRun).filter(EvaluationRun.run_id == run_id).first()
@@ -195,6 +204,10 @@ class EvaluationDB:
             db_run.average_context_precision = average_context_precision
         if average_context_recall is not None:
             db_run.average_context_recall = average_context_recall
+        if total_tokens is not None:
+            db_run.total_tokens = total_tokens
+        if average_tokens_per_query is not None:
+            db_run.average_tokens_per_query = average_tokens_per_query
         if run_metadata is not None:
             db_run.run_metadata = run_metadata
 
@@ -280,6 +293,8 @@ class EvaluationDB:
         average_merchant_similarity: Optional[float] = None,
         average_items_similarity: Optional[float] = None,
         average_overall_quality: Optional[float] = None,
+        total_tokens: Optional[int] = None,
+        average_tokens_per_ticket: Optional[float] = None,
         run_metadata: Optional[dict] = None
     ) -> Optional[Agent1EvaluationRun]:
         db_run = self.db.query(Agent1EvaluationRun).filter(Agent1EvaluationRun.run_id == run_id).first()
@@ -312,6 +327,10 @@ class EvaluationDB:
             db_run.average_items_similarity = average_items_similarity
         if average_overall_quality is not None:
             db_run.average_overall_quality = average_overall_quality
+        if total_tokens is not None:
+            db_run.total_tokens = total_tokens
+        if average_tokens_per_ticket is not None:
+            db_run.average_tokens_per_ticket = average_tokens_per_ticket
         if run_metadata is not None:
             db_run.run_metadata = run_metadata
 

@@ -1,8 +1,83 @@
-# ui/app/pages/2_Admin_Dashboard.py
 import requests
 import streamlit as st
+from datetime import date
 
 st.set_page_config(page_title="Admin Dashboard", layout="wide")
+
+# Apply consistent blue sidebar styling
+st.markdown("""
+<style>
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 100%);
+    }
+
+    [data-testid="stSidebar"] * {
+        color: white !important;
+    }
+
+    /* Sidebar buttons - make them visible with background */
+    [data-testid="stSidebar"] button {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        color: white !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+    }
+
+    [data-testid="stSidebar"] button:hover {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+        border-color: rgba(255, 255, 255, 0.5) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    [data-testid="stSidebar"] button p {
+        color: white !important;
+    }
+
+    /* Sidebar selectbox - make them visible */
+    [data-testid="stSidebar"] [data-baseweb="select"] {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    }
+
+    [data-testid="stSidebar"] [data-baseweb="select"] > div {
+        background-color: transparent !important;
+        color: white !important;
+    }
+
+    /* Sidebar slider */
+    [data-testid="stSidebar"] [data-testid="stSlider"] {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+    }
+
+    /* Make selectbox options readable */
+    [data-baseweb="popover"] {
+        background-color: white !important;
+    }
+
+    [data-baseweb="popover"] * {
+        color: #1f2937 !important;
+    }
+
+    /* Fix main content buttons - ensure text is visible */
+    div[data-testid="stMainBlockContainer"] button {
+        color: #1f2937 !important;
+    }
+
+    div[data-testid="stMainBlockContainer"] button:hover {
+        color: #111827 !important;
+    }
+
+    /* Ensure button text in main area is dark */
+    div[data-testid="stMainBlockContainer"] .stButton > button p {
+        color: #1f2937 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- Security Guard ---
 # Check if the user is logged in
@@ -18,7 +93,7 @@ if 'admin' not in user_roles:
 
 # --- Page Content ---
 st.title("Admin Dashboard 📈")
-tab1, tab2 = st.tabs(["💬 LLM Chat", "📝 Ticket Review & Correction"])
+tab1, tab2, tab3 = st.tabs(["💬 LLM Chat", "📝 Ticket Review & Correction", "🗄️ Database Viewer"])
 
 with tab1:
     st.subheader("LLM Chat (Ask about expenses)")
@@ -222,7 +297,9 @@ with tab2:
 
                         expected_date = st.date_input(
                             "Correct Transaction Date:",
-                            help="Select the correct date from the receipt"
+                            min_value=date(2000, 1, 1),
+                            max_value=date.today(),
+                            help="Select the correct date from the receipt (from year 2000 to today)"
                         )
 
                         expected_amount = st.number_input(
@@ -327,7 +404,7 @@ with tab2:
                                             st.metric("F1 Score", f"{f1:.2%}")
 
                                     # LLM-as-judge metrics
-                                    st.write("**LLM Quality Assessment:**")
+                                    st.write("**LLM as a Judge:**")
                                     llm_col1, llm_col2, llm_col3 = st.columns(3)
 
                                     with llm_col1:
@@ -348,7 +425,7 @@ with tab2:
                                     # LLM Feedback
                                     llm_feedback = eval_data.get('llm_feedback')
                                     if llm_feedback:
-                                        st.info(f"**LLM Feedback:** {llm_feedback}")
+                                        st.info(f"**LLM-as-a-Jugde Feedback:** {llm_feedback}")
 
                                     # Show comparison
                                     with st.expander("📋 Detailed Comparison"):
@@ -402,3 +479,207 @@ with tab2:
 
     except Exception as e:
         st.error(f"Error loading tickets: {str(e)}")
+
+
+# --- Database Viewer Tab ---
+with tab3:
+    st.subheader("🗄️ Database Viewer")
+    st.info("View all tickets, filter by status, see images, and analyze spending trends.")
+
+    try:
+        id_token = st.session_state['token']['id_token']
+
+        # Fetch all tickets from database
+        with st.spinner("Loading tickets from database..."):
+            all_tickets_response = requests.get(
+                "http://agent-1-formatter:8000/api/tickets/all",
+                headers={"Authorization": f"Bearer {id_token}"}
+            )
+
+        if all_tickets_response.status_code == 200:
+            all_tickets = all_tickets_response.json()
+
+            if all_tickets:
+                # === STATISTICS SECTION ===
+                st.markdown("### 📊 Overall Statistics")
+
+                # Calculate statistics
+                total_tickets = len(all_tickets)
+                approved_tickets = sum(1 for t in all_tickets if t.get('approved'))
+                needs_review = sum(1 for t in all_tickets if t.get('need_verify'))
+                total_spent = sum(float(t.get('total_amount', 0)) for t in all_tickets)
+
+                # Display metrics
+                metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+                with metric_col1:
+                    st.metric("📝 Total Tickets", total_tickets)
+                with metric_col2:
+                    st.metric("✅ Approved", approved_tickets)
+                with metric_col3:
+                    st.metric("⚠️ Needs Review", needs_review)
+                with metric_col4:
+                    st.metric("💰 Total Spent", f"${total_spent:,.2f}")
+
+                st.markdown("---")
+
+                # === TRENDS SECTION ===
+                st.markdown("### 📈 Spending Trends")
+
+                trend_col1, trend_col2 = st.columns(2)
+
+                with trend_col1:
+                    # Top spending users
+                    st.markdown("#### 👤 Top Spenders")
+                    user_spending = {}
+                    for ticket in all_tickets:
+                        user_id = ticket.get('user_id', 'Unknown')
+                        amount = float(ticket.get('total_amount', 0))
+                        user_spending[user_id] = user_spending.get(user_id, 0) + amount
+
+                    # Sort and display top 5
+                    top_users = sorted(user_spending.items(), key=lambda x: x[1], reverse=True)[:5]
+                    for idx, (user, amount) in enumerate(top_users, 1):
+                        # Shorten user ID for display
+                        display_user = user[:20] + "..." if len(user) > 20 else user
+                        st.write(f"{idx}. **{display_user}**: ${amount:,.2f}")
+
+                with trend_col2:
+                    # Top spending categories
+                    st.markdown("#### 🏷️ Top Categories")
+                    category_spending = {}
+                    for ticket in all_tickets:
+                        category = ticket.get('category', 'Uncategorized')
+                        amount = float(ticket.get('total_amount', 0))
+                        category_spending[category] = category_spending.get(category, 0) + amount
+
+                    # Sort and display top 5
+                    top_categories = sorted(category_spending.items(), key=lambda x: x[1], reverse=True)[:5]
+                    for idx, (cat, amount) in enumerate(top_categories, 1):
+                        st.write(f"{idx}. **{cat}**: ${amount:,.2f}")
+
+                st.markdown("---")
+
+                # === FILTERS SECTION ===
+                st.markdown("### 🔍 Filter Tickets")
+
+                filter_col1, filter_col2, filter_col3 = st.columns(3)
+
+                with filter_col1:
+                    status_filter = st.selectbox(
+                        "Approval Status",
+                        ["All", "Approved", "Not Approved", "Needs Review"]
+                    )
+
+                with filter_col2:
+                    # Get unique categories
+                    categories = sorted(set(t.get('category', 'Uncategorized') for t in all_tickets))
+                    category_filter = st.selectbox(
+                        "Category",
+                        ["All"] + categories
+                    )
+
+                with filter_col3:
+                    # Get unique users
+                    users = sorted(set(t.get('user_id', 'Unknown') for t in all_tickets))
+                    user_display = ["All"] + [u[:30] + "..." if len(u) > 30 else u for u in users]
+                    user_filter = st.selectbox("User", user_display)
+
+                # Apply filters
+                filtered_tickets = all_tickets.copy()
+
+                if status_filter == "Approved":
+                    filtered_tickets = [t for t in filtered_tickets if t.get('approved')]
+                elif status_filter == "Not Approved":
+                    filtered_tickets = [t for t in filtered_tickets if not t.get('approved')]
+                elif status_filter == "Needs Review":
+                    filtered_tickets = [t for t in filtered_tickets if t.get('need_verify')]
+
+                if category_filter != "All":
+                    filtered_tickets = [t for t in filtered_tickets if t.get('category') == category_filter]
+
+                if user_filter != "All":
+                    # Find the actual user ID from the display name
+                    actual_user = users[user_display.index(user_filter) - 1] if user_filter != "All" else None
+                    if actual_user:
+                        filtered_tickets = [t for t in filtered_tickets if t.get('user_id') == actual_user]
+
+                st.markdown(f"### 📋 Tickets ({len(filtered_tickets)} results)")
+
+                # === TICKETS TABLE ===
+                if filtered_tickets:
+                    # Sort by ID descending (most recent first)
+                    filtered_tickets = sorted(filtered_tickets, key=lambda x: x.get('id', 0), reverse=True)
+
+                    # Display tickets in expandable sections
+                    for ticket in filtered_tickets:
+                        ticket_id = ticket.get('id', 'N/A')
+                        merchant = ticket.get('merchant_name', 'Unknown')
+                        amount = ticket.get('total_amount', 0)
+                        date = ticket.get('transaction_date', 'N/A')
+                        approved = ticket.get('approved', False)
+                        needs_verify = ticket.get('need_verify', False)
+                        category = ticket.get('category', 'Uncategorized')
+
+                        # Status badge
+                        if approved:
+                            status_badge = "✅ Approved"
+                            status_color = "green"
+                        elif needs_verify:
+                            status_badge = "⚠️ Needs Review"
+                            status_color = "orange"
+                        else:
+                            status_badge = "❌ Not Approved"
+                            status_color = "red"
+
+                        # Create expander for each ticket
+                        with st.expander(f"**#{ticket_id}** | {merchant} | ${amount:.2f} | {date} | {status_badge}"):
+                            ticket_col1, ticket_col2 = st.columns([1, 1])
+
+                            with ticket_col1:
+                                st.markdown("**Ticket Details**")
+                                st.write(f"**ID:** {ticket_id}")
+                                st.write(f"**Merchant:** {merchant}")
+                                st.write(f"**Date:** {date}")
+                                st.write(f"**Amount:** ${amount:.2f}")
+                                st.write(f"**Category:** {category}")
+                                st.write(f"**Status:** {status_badge}")
+
+                                # User ID (shortened)
+                                user_id = ticket.get('user_id', 'Unknown')
+                                display_user_id = user_id[:40] + "..." if len(user_id) > 40 else user_id
+                                st.write(f"**User:** {display_user_id}")
+
+                                # Items
+                                st.markdown("**Items:**")
+                                items = ticket.get('items', [])
+                                if items:
+                                    for item in items:
+                                        desc = item.get('description', 'Unknown')
+                                        price = item.get('price', 0)
+                                        st.write(f"- {desc}: ${price:.2f}")
+                                else:
+                                    st.write("_No items_")
+
+                            with ticket_col2:
+                                # Display receipt image from MinIO
+                                s3_path = ticket.get('s3_path')
+                                if s3_path:
+                                    try:
+                                        image_api_url = f"http://localhost:8002/api/image?s3_path={s3_path}"
+                                        st.image(image_api_url, caption="Receipt Image", use_container_width=True)
+                                    except:
+                                        st.info("📷 Image preview unavailable")
+                                else:
+                                    st.info("📷 No image available for this ticket")
+
+                else:
+                    st.warning("No tickets match the selected filters.")
+
+            else:
+                st.warning("No tickets found in the database. Upload some receipts first!")
+
+        else:
+            st.error(f"Failed to fetch tickets: {all_tickets_response.status_code}")
+
+    except Exception as e:
+        st.error(f"Error loading database viewer: {str(e)}")

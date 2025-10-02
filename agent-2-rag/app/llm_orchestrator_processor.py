@@ -41,6 +41,13 @@ class OrchestratorAgent:
             logger.info(f"Orchestrator processing question: {question}")
             response = self.client.invoke(question)
             logger.info(f"Orchestrator response: {response}")
+
+            # Log token usage if available
+            if hasattr(response, 'response_metadata'):
+                usage = response.response_metadata.get('token_usage', {})
+                if usage:
+                    logger.info(f"Tokens used - prompt: {usage.get('prompt_tokens')}, completion: {usage.get('completion_tokens')}, total: {usage.get('total_tokens')}")
+
             return response
         except Exception as e:
             logger.error(f"An error occurred in OrchestratorAgent: {e}")

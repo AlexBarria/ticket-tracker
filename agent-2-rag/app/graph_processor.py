@@ -18,11 +18,14 @@ class AgentPipeline:
 
     def __init__(self):
         self.sql_rag = SQLRagAgent(DBRepository(os.getenv("DATABASE_URL")))
+        self.total_tokens = 0  # Track tokens across the pipeline
 
         @tool
         def process_sql_rag(query: str) -> str:
             """ Retrieves data from database based on a requirement in natural language."""
-            return str(self.sql_rag.query(query))
+            results, tokens = self.sql_rag.query(query)
+            # Token tracking is handled by the outer callback
+            return str(results)
 
         @tool
         def process_web_search(question: str) -> str:
@@ -73,6 +76,13 @@ class AgentPipeline:
     def process_orchestrator(self, state: MessagesState):
         messages = state['messages']
         response = self.orchestrator.query(messages)
+
+        # Track tokens from orchestrator response
+        if hasattr(response, 'response_metadata'):
+            usage = response.response_metadata.get('token_usage', {})
+            if usage and 'total_tokens' in usage:
+                self.total_tokens += usage['total_tokens']
+
         return {"messages": [response]}  # Returns
 
     @staticmethod
@@ -107,8 +117,18 @@ class AgentPipeline:
             messages.append(HumanMessage(content=f"Guardrails validation error: {e}"))
             return {"messages": messages}
 
-    def run(self, question: str) -> str:
+    def run(self, question: str) -> tuple[str, int]:
+        """
+        Run the agent pipeline and return the answer with total token count.
+
+        Returns:
+            tuple[str, int]: (answer, total_tokens)
+        """
+        # Reset token counter
+        self.total_tokens = 0
+
         initial_message = HumanMessage(content=question)
         final_state = self.graph.invoke({"messages": [initial_message]}, config={"configurable": {"thread_id": 42}})
         final_message = final_state['messages'][-1]
-        return final_message.content
+
+        return final_message.content, self.total_tokens
