@@ -263,7 +263,7 @@ if 'token' not in st.session_state:
             redirect_uri=AUTH0_REDIRECT_URI,
             scope="openid email profile",
             key="auth0",
-            width=True,
+            use_container_width=True,
         )
 
     if result and "token" in result:

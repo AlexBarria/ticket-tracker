@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS evaluation_runs (
     average_context_recall NUMERIC(5, 4),
     total_tokens INT DEFAULT 0,
     average_tokens_per_query NUMERIC(10, 2) DEFAULT 0,
-    metadata JSONB
+    run_metadata JSONB
 );
 
 -- Individual query results

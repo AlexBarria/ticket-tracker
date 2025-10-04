@@ -16,13 +16,20 @@ from urllib.error import URLError, HTTPError
 
 class AgentPipeline:
 
-    def __init__(self):
+    def __init__(self, max_recursion=10, max_tool_calls=3):
         self.sql_rag = SQLRagAgent(DBRepository(os.getenv("DATABASE_URL")))
+        self.max_recursion = max_recursion
+        self.max_tool_calls = max_tool_calls
+        self.recursion_depth = 0
+        self.tool_calls = 0
         self.total_tokens = 0  # Track tokens across the pipeline
 
         @tool
         def process_sql_rag(query: str) -> str:
             """ Retrieves data from database based on a requirement in natural language."""
+            if self.tool_calls >= self.max_tool_calls:
+                return "Tools call limit reached."
+            self.tool_calls += 1
             results, tokens = self.sql_rag.query(query)
             # Token tracking is handled by the outer callback
             return str(results)
@@ -30,6 +37,9 @@ class AgentPipeline:
         @tool
         def process_web_search(question: str) -> str:
             """ Searches the web and returns a concise answer with sources. Use for up-to-date or external info. """
+            if self.tool_calls >= self.max_tool_calls:
+                return "Tools call limit reached."
+            self.tool_calls += 1
             web_url = os.getenv("WEB_AGENT_URL", "http://tool-web:8000/search")
             payload = {
                 "question": question,
@@ -75,6 +85,10 @@ class AgentPipeline:
 
     def process_orchestrator(self, state: MessagesState):
         messages = state['messages']
+        if self.recursion_depth >= self.max_recursion:
+            messages.append(HumanMessage(content=f"Recursion limit reached."))
+            return {"messages": messages}
+        self.recursion_depth += 1
         response = self.orchestrator.query(messages)
 
         # Track tokens from orchestrator response
@@ -124,8 +138,10 @@ class AgentPipeline:
         Returns:
             tuple[str, int]: (answer, total_tokens)
         """
-        # Reset token counter
+        # Reset token counter and recursion/tool call counters
         self.total_tokens = 0
+        self.recursion_depth = 0
+        self.tool_calls = 0
 
         initial_message = HumanMessage(content=question)
         final_state = self.graph.invoke({"messages": [initial_message]}, config={"configurable": {"thread_id": 42}})
