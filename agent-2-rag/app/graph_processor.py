@@ -16,10 +16,10 @@ from urllib.error import URLError, HTTPError
 
 class AgentPipeline:
 
-    def __init__(self, max_recursion=10, max_tool_calls=3):
+    def __init__(self):
         self.sql_rag = SQLRagAgent(DBRepository(os.getenv("DATABASE_URL")))
-        self.max_recursion = max_recursion
-        self.max_tool_calls = max_tool_calls
+        self.max_recursion = int(os.getenv("AGENT_MAX_RECURSION", 10))
+        self.max_tool_calls = int(os.getenv("AGENT_MAX_TOOL_CALLS", 3))
         self.recursion_depth = 0
         self.tool_calls = 0
         self.total_tokens = 0  # Track tokens across the pipeline

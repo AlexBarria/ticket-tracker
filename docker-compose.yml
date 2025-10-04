@@ -136,6 +136,8 @@ services:
       - ./agent-2-rag/app:/app
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AGENT_MAX_RECURSION=${AGENT_MAX_RECURSION:-10}
+      - AGENT_MAX_TOOL_CALLS=${AGENT_MAX_TOOL_CALLS:-3}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - WEB_AGENT_URL=http://tool-web:8000/search
       - GUARDRAILS_URL=http://guardrails:8000/validate
