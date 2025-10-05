@@ -1,3 +1,6 @@
+"""
+Metrics Dashboard Page, with metrics and visualizations for both Agent 1 (OCR) and Agent 2 (RAG) evaluations.
+"""
 import streamlit as st
 import requests
 import pandas as pd

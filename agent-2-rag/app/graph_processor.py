@@ -15,8 +15,15 @@ from urllib.error import URLError, HTTPError
 
 
 class AgentPipeline:
+    """
+    Orchestrates a multi-agent pipeline for processing natural language queries, retrieving data from a SQL database,
+    performing web searches, and applying guardrails validation.
+    """
 
     def __init__(self):
+        """
+        Initializes the AgentPipeline with SQL RAG agent, orchestrator, and state graph.
+        """
         self.sql_rag = SQLRagAgent(DBRepository(os.getenv("DATABASE_URL")))
         self.max_recursion = int(os.getenv("AGENT_MAX_RECURSION", 10))
         self.max_tool_calls = int(os.getenv("AGENT_MAX_TOOL_CALLS", 3))
@@ -84,6 +91,14 @@ class AgentPipeline:
         self.graph = graph.compile(checkpointer=checkpointer)
 
     def process_orchestrator(self, state: MessagesState):
+        """
+        Process the orchestrator agent to determine the next action based on the current messages.
+
+        Args:
+            state (MessagesState): The current state containing messages.
+        Returns:
+            dict: Updated state with the orchestrator's response message.
+        """
         messages = state['messages']
         if self.recursion_depth >= self.max_recursion:
             messages.append(HumanMessage(content=f"Recursion limit reached."))
@@ -101,6 +116,14 @@ class AgentPipeline:
 
     @staticmethod
     def select_next_step(state: MessagesState) -> Literal["tools", "guardrails"]:
+        """
+        Decide the next step based on the last message's content.
+
+        Args:
+            state (MessagesState): The current state containing messages.
+        Returns:
+            Literal["tools", "guardrails"]: The next step to take.
+        """
         messages = state['messages']
         last_message = messages[-1]
         if last_message.tool_calls:
@@ -109,6 +132,14 @@ class AgentPipeline:
 
     @staticmethod
     def process_guardrails(state: MessagesState):
+        """
+        Apply guardrails validation to the final answer.
+
+        Args:
+            state (MessagesState): The current state containing messages.
+        Returns:
+            dict: Updated state with validated messages.
+        """
         if os.getenv("GUARDRAILS_ENABLED", "false").lower() == "false":
             return {"messages": state['messages']}
         # Extract the last messages
@@ -135,6 +166,8 @@ class AgentPipeline:
         """
         Run the agent pipeline and return the answer with total token count.
 
+        Args:
+            question (str): The input question in natural language.
         Returns:
             tuple[str, int]: (answer, total_tokens)
         """

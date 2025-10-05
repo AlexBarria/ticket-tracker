@@ -1,3 +1,6 @@
+"""
+Application UI home page with login and role-based navigation.
+"""
 # ui/app/main.py
 import streamlit as st
 import os

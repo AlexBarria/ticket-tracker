@@ -1,3 +1,6 @@
+"""
+Client Uploader Page, allows clients to upload ticket images for processing.
+"""
 import streamlit as st
 import requests
 import json

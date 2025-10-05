@@ -1,3 +1,6 @@
+"""
+OCR Service using FastAPI and EasyOCR
+"""
 import io
 import streamlit as st
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -53,6 +56,13 @@ def read_root():
 async def scan_receipt(file: UploadFile = File(...)):
     """
     Receives an image file, extracts text using EasyOCR, and returns the text.
+
+    Args:
+        file (UploadFile): The image file uploaded by the user.
+    Returns:
+        dict: A dictionary containing the filename and extracted text.
+    Raises:
+        HTTPException: If the OCR model is not available or if there is an error processing the
     """
     if not reader:
         raise HTTPException(status_code=500, detail="OCR model is not available.")

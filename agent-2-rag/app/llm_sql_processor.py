@@ -102,7 +102,7 @@ class SQLRagAgent:
 
     def _get_sql_query(self, raw_text: str) -> tuple[str, int]:
         response = self.client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT.format(schema=self.schema)},
                 {"role": "user", "content": _USER_PROMPT.format(raw_text=raw_text)}

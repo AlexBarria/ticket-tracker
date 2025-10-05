@@ -1,6 +1,3 @@
-"""
-Database repository for interacting with PostgreSQL database.
-"""
 from sqlalchemy import create_engine, text
 
 _GET_TABLES_SCHEMA_QUERY = """

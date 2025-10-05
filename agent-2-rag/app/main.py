@@ -1,3 +1,6 @@
+"""
+FastAPI application for Agent 2 - Chatbot with Retrieval-Augmented Generation (RAG).
+"""
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from graph_processor import AgentPipeline
@@ -53,12 +56,26 @@ def get_user_role(token: str = Depends(oauth2_scheme)):
 
 @app.get("/")
 def read_root():
-    # Health check endpoint
+    """
+    Health check endpoint
+    """
     return {"status": "ok", "service": "Agent 2 - RAG"}
 
 
 @app.post("/ask")
 def ask(query: dict, token: str = Depends(oauth2_scheme), user_role: str = Depends(get_user_role)):
+    """
+    Handle user queries and return answers using the agent pipeline.
+
+    Args:
+        query (dict): The query payload containing the 'query' key.
+        token (str): The OAuth2 token from the request header.
+        user_role (str): The role of the user extracted from the token.
+    Returns:
+        dict: The answer and token usage.
+    Raises:
+        HTTPException: If the user is unauthorized or if an error occurs during processing.
+    """
     import time
     import psycopg2
 

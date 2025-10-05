@@ -3,6 +3,9 @@ from .database import Base
 
 
 class Ticket(Base):
+    """
+    SQLAlchemy model for the Ticket table.
+    """
     __tablename__ = "tickets"
 
     id = Column(Integer, primary_key=True, index=True)

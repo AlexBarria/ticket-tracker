@@ -4,11 +4,17 @@ from datetime import date
 
 
 class Item(BaseModel):
+    """
+    Pydantic model for an item in a ticket.
+    """
     description: str
     price: float
 
 
 class TicketCreate(BaseModel):
+    """
+    Pydantic model for creating a ticket.
+    """
     merchant_name: str
     transaction_date: Optional[date] = None
     total_amount: float
@@ -18,6 +24,9 @@ class TicketCreate(BaseModel):
 
 
 class TicketResponse(TicketCreate):
+    """
+    Pydantic model for ticket create response.
+    """
     id: int
     s3_path: str
     user_id: str
@@ -27,9 +36,15 @@ class TicketResponse(TicketCreate):
 
 
 class TicketApproveVerifyRequest(BaseModel):
+    """
+    Pydantic model for request for approving or verifying a ticket.
+    """
     id: int
 
 
 class TicketApproveVerifyResponse(BaseModel):
+    """
+    Pydantic model for the response after approving or verifying a ticket.
+    """
     id: int
     status: str

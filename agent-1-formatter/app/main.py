@@ -1,3 +1,6 @@
+"""
+FastAPI app for Agent 1 - Receipt Formatter & Uploader
+"""
 # agent-1-formatter/app/main.py
 import os
 import io
@@ -97,6 +100,9 @@ _setup_tracing(app)
 
 @app.get("/")
 def read_root():
+    """
+    Health check endpoint.
+    """
     return {"status": "ok", "service": "Agent 1 - Formatter"}
 
 
@@ -105,6 +111,19 @@ async def upload_receipt(
         file: UploadFile = File(...),
         user_id: str = Depends(get_current_user),
         db: Session = Depends(get_db)):
+    """
+    Uploads a receipt image, processes it with OCR and LLM to extract structured data, and saves the result in the
+    database.
+
+    Args:
+        file (UploadFile): The uploaded receipt image file.
+        user_id (str): The ID of the authenticated user.
+        db (Session): The database session.
+    Returns:
+        TicketResponse: The structured ticket data saved in the database.
+    Raises:
+        HTTPException: If any step in the process fails.
+    """
     file_content = await file.read()
     # 1. Upload original image to MinIO
     object_name = f"{user_id}/{file.filename}"
@@ -148,6 +167,18 @@ async def approve_receipt(
         request: schemas.TicketApproveVerifyRequest,
         user_id: str = Depends(get_current_user),
         db: Session = Depends(get_db)):
+    """
+    Approves a ticket that does not require verification.
+
+    Args:
+        request (TicketApproveVerifyRequest): The request containing the ticket ID to approve.
+        user_id (str): The ID of the authenticated user.
+        db (Session): The database session.
+    Returns:
+        TicketApproveVerifyResponse: The approval status and ticket ID.
+    Raises:
+        HTTPException: If the ticket is not found or approval fails.
+    """
     try:
         if crud.approve_ticket(db=db, id=request.id, user_id=user_id) is None:
             raise HTTPException(status_code=404, detail="Ticket not found")
@@ -161,6 +192,18 @@ async def verify_receipt(
         request: schemas.TicketApproveVerifyRequest,
         user_id: str = Depends(get_current_user),
         db: Session = Depends(get_db)):
+    """
+    Marks a ticket as needing verification.
+
+    Args:
+        request (TicketApproveVerifyRequest): The request containing the ticket ID to verify.
+        user_id (str): The ID of the authenticated user.
+        db (Session): The database session.
+    Returns:
+        TicketApproveVerifyResponse: The verification status and ticket ID.
+    Raises:
+        HTTPException: If the ticket is not found or verification fails.
+    """
     try:
         if crud.verify_ticket(db=db, id=request.id, user_id=user_id) is None:
             raise HTTPException(status_code=404, detail="Ticket not found")
@@ -175,7 +218,19 @@ async def get_tickets(
         need_verify: bool = Query(None),
         user_id: str = Depends(get_current_user),
         db: Session = Depends(get_db)):
-    """Get recent tickets for the current user"""
+    """
+    Get recent tickets for the current user.
+
+    Args:
+        limit (int): Maximum number of tickets to return.
+        need_verify (bool, optional): If specified, filter tickets by their need_verify status.
+        user_id (str): The ID of the authenticated user.
+        db (Session): The database session.
+    Returns:
+        List of tickets with all fields.
+    Raises:
+        HTTPException: If fetching tickets fails.
+    """
     import traceback
     try:
         tickets = crud.get_user_tickets(db=db, user_id=user_id, limit=limit, need_verify=need_verify)
@@ -202,13 +257,25 @@ async def get_tickets(
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Failed to fetch tickets: {str(e)}")
 
+
 @app.post("/api/save-ground-truth")
 async def save_ground_truth(
     request: dict,
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Save ground truth for a ticket after evaluation"""
+    """
+    Save ground truth for a ticket after evaluation.
+
+    Args:
+        request (dict): The request containing ticket ID and corrected fields.
+        user_id (str): The ID of the authenticated user.
+        db (Session): The database session.
+    Returns:
+        dict: Status message.
+    Raises:
+        HTTPException: If saving ground truth fails.
+    """
     import json
     try:
         ticket_id = request.get("ticket_id")
@@ -241,6 +308,13 @@ def get_image(
 ):
     """
     Streams an image from MinIO given its s3_path.
+
+    Args:
+        s3_path (str): The S3 path of the image to retrieve.
+    Returns:
+        Response: The image file streamed back to the client.
+    Raises:
+        HTTPException: If the image is not found or s3_path is invalid.
     """
     try:
         if not s3_path.startswith("s3://"):
@@ -272,6 +346,14 @@ def get_all_tickets(
     """
     Get all tickets from the database for admin dashboard.
     Returns all fields including approval status and verification flags.
+
+    Args:
+        db (Session): The database session.
+        user_id (str): The ID of the authenticated user.
+    Returns:
+        List of all tickets with all fields.
+    Raises:
+        HTTPException: If fetching tickets fails.
     """
     try:
         # Query all tickets ordered by ID descending

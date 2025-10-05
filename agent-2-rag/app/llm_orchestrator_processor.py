@@ -1,6 +1,3 @@
-"""
-Defines an SQL RAG agent that retrieves data from a SQL DB using natural language queries.
-"""
 from langchain_core.messages import AnyMessage, SystemMessage, BaseMessage
 from langchain_openai.chat_models import ChatOpenAI
 import logging
@@ -25,8 +22,15 @@ DECISION POLICY:
 
 
 class OrchestratorAgent:
+    """
+    An orchestrator agent that uses a language model to process natural language queries and decide if a tool should be
+    used, or if a direct answer can be provided.
+    """
 
     def __init__(self, model: str, tools: list):
+        """
+        Initializes the OrchestratorAgent with a language model and available tools.
+        """
         # Enable OpenInference instrumentation for LangChain to capture LLM spans and token usage
         try:
             LangChainInstrumentor().instrument()
@@ -35,6 +39,14 @@ class OrchestratorAgent:
         self.client = ChatOpenAI(model=model).bind_tools(tools)
 
     def query(self, question: list[AnyMessage]) -> BaseMessage:
+        """
+        Processes a natural language question using the orchestrator agent.
+
+        Args:
+            question (list[AnyMessage]): The input question as a list of messages.
+        Returns:
+            BaseMessage: The response from the orchestrator agent.
+        """
         try:
             if question and getattr(question[0], "content", None) != _SYSTEM_PROMPT.strip():
                 question.insert(0, SystemMessage(content=_SYSTEM_PROMPT.strip()))

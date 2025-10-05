@@ -1,3 +1,6 @@
+"""
+Web search service using FastAPI and Tavily API.
+"""
 # tool-web/app/main.py
 import os
 import logging
@@ -54,18 +57,27 @@ except Exception as _:
 
 
 class SearchRequest(BaseModel):
+    """
+    Request model for web search.
+    """
     question: str
     top_k: int = 5
     fetch_pages: bool = True
 
 
 class Source(BaseModel):
+    """
+    Model representing a search source result.
+    """
     url: str
     title: Optional[str] = None
     snippet: Optional[str] = None
 
 
 class SearchResponse(BaseModel):
+    """
+    Response model for web search results.
+    """
     summary: Optional[str] = None
     sources: List[Source]
     reasoning: Optional[str] = None
@@ -101,6 +113,14 @@ async def tavily_search(query: str, top_k: int) -> List[Source]:
 
 
 async def fetch_page_text(url: str) -> str:
+    """
+    Fetch and extract text content from a web page.
+
+    Args:
+        url (str): The URL of the web page to fetch.
+    Returns:
+        str: The extracted text content, capped at 8000 characters.
+    """
     try:
         async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
             r = await client.get(url)
@@ -120,6 +140,15 @@ async def fetch_page_text(url: str) -> str:
 
 
 async def summarize_with_openai(question: str, snippets: List[str]) -> str:
+    """
+    Summarize text content using OpenAI GPT-4o model.
+
+    Args:
+        question (str): The original search question.
+        snippets (List[str]): List of text snippets to summarize.
+    Returns:
+        str: The generated summary.
+    """
     client = OpenAI()
 
     prompt = (
@@ -146,11 +175,25 @@ async def summarize_with_openai(question: str, snippets: List[str]) -> str:
 
 @app.get("/")
 async def health():
+    """
+    Health check endpoint.
+    """
     return {"status": "ok", "service": "Agent Web - Search"}
 
 
 @app.post("/search", response_model=SearchResponse)
 async def search(req: SearchRequest):
+    """
+    Perform a web search and optionally summarize results.
+
+    Args:
+        req (SearchRequest): The search request containing the question, number of top results, and whether to fetch
+        and summarize page contents.
+    Returns:
+        SearchResponse: The search response containing the summary, sources, and reasoning.
+    Raises:
+        HTTPException: If there is an error during the search or summarization process.
+    """
     sources = await tavily_search(req.question, req.top_k)
     summary = None
     if USE_SUMMARIZATION and req.fetch_pages and sources:

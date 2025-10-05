@@ -1,3 +1,6 @@
+"""
+FastAPI for Guardrails microservice.
+"""
 import logging
 
 from fastapi import FastAPI, HTTPException
@@ -39,22 +42,40 @@ promptGuards = PromptGuards()
 
 
 class GuardRequest(BaseModel):
+    """
+    Request model for guard validation.
+    """
     guard: str
     prompt: str
 
 
 class GuardResponse(BaseModel):
+    """
+    Response model for guard validation.
+    """
     answer: str
 
 
 @app.get("/")
 def read_root():
-    # Health check endpoint
+    """
+    Health check endpoint
+    """
     return {"status": "ok", "service": "Guardrails"}
 
 
 @app.post("/validate")
 def validate(request: GuardRequest):
+    """
+    Validate a prompt against a specified guard.
+
+    Args:
+        request (GuardRequest): The request containing the guard name and prompt.
+    Returns:
+        GuardResponse: The response containing the validated answer.
+    Raises:
+        HTTPException: If the guard is not found or validation fails.
+    """
     if not promptGuards.is_guard(request.guard):
         raise HTTPException(status_code=404, detail="Guard not found")
     try:

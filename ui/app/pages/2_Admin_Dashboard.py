@@ -1,3 +1,6 @@
+"""
+Admin Dashboard Page, with Chatbot, Ticket Review & Correction, and Database Viewer.
+"""
 import requests
 import streamlit as st
 from datetime import date

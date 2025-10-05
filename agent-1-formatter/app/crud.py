@@ -1,7 +1,19 @@
 from sqlalchemy.orm import Session
 from . import models, schemas
 
+
 def create_ticket(db: Session, ticket_data: schemas.TicketCreate, s3_path: str, user_id: str):
+    """
+    Create a new ticket in the database.
+
+    Args:
+        db (Session): The database session.
+        ticket_data (schemas.TicketCreate): The ticket data from the user.
+        s3_path (str): The S3 path where the ticket image is stored.
+        user_id (str): The ID of the user creating the ticket.
+    Returns:
+        models.Ticket: The created ticket object.
+    """
     # Convert Pydantic items to a list of dicts for JSON storage
     items_as_dicts = [item.dict() for item in ticket_data.items]
 
@@ -24,6 +36,18 @@ def create_ticket(db: Session, ticket_data: schemas.TicketCreate, s3_path: str, 
 
 
 def approve_ticket(db: Session, id: int, user_id: str):
+    """
+    Approve a ticket. Ticket can only be approved if it does not require verification.
+
+    Args:
+        db (Session): The database session.
+        id (int): The ID of the ticket to approve.
+        user_id (str): The ID of the user approving the ticket.
+    Returns:
+        models.Ticket: The approved ticket object, or None if not found.
+    Raises:
+        ValueError: If the ticket requires verification and cannot be approved directly.
+    """
     db_ticket = db.query(models.Ticket).filter(models.Ticket.id == id, models.Ticket.user_id == user_id).first()
     if not db_ticket:
         return None
@@ -35,6 +59,18 @@ def approve_ticket(db: Session, id: int, user_id: str):
 
 
 def verify_ticket(db: Session, id: int, user_id: str):
+    """
+    Mark a ticket as needing verification. Ticket can only be marked for verification if it is not already approved.
+
+    Args:
+        db (Session): The database session.
+        id (int): The ID of the ticket to mark for verification.
+        user_id (str): The ID of the user marking the ticket for verification.
+    Returns:
+        models.Ticket: The ticket object marked for verification, or None if not found.
+    Raises:
+        ValueError: If the ticket is already approved.
+    """
     db_ticket = db.query(models.Ticket).filter(models.Ticket.id == id, models.Ticket.user_id == user_id).first()
     if not db_ticket:
         return None
@@ -46,7 +82,17 @@ def verify_ticket(db: Session, id: int, user_id: str):
 
 
 def get_user_tickets(db: Session, user_id: str, limit: int = 10, need_verify: bool = None):
-    """Get recent tickets for a user"""
+    """
+    Get recent tickets for a user
+
+    Args:
+        db (Session): The database session.
+        user_id (str): The ID of the user whose tickets to retrieve.
+        limit (int): The maximum number of tickets to retrieve.
+        need_verify (bool, optional): If specified, filter tickets by their need_verify status.
+    Returns:
+        List[models.Ticket]: A list of ticket objects.
+    """
     # For admin users, show all tickets
     # For regular users, filter by user_id
     query = db.query(models.Ticket)
@@ -70,7 +116,18 @@ def save_ground_truth(
     corrected_items: list,
     corrected_by: str
 ):
-    """Save ground truth for a ticket and mark it as approved"""
+    """
+    Save ground truth for a ticket and mark it as approved
+
+    Args:
+        db (Session): The database session.
+        ticket_id (int): The ID of the ticket to update.
+        corrected_merchant (str): The corrected merchant name.
+        corrected_date (str): The corrected transaction date.
+        corrected_amount (float): The corrected total amount.
+        corrected_items (list): The corrected list of items.
+        corrected_by (str): The ID of the user providing the ground truth.
+    """
     from sqlalchemy import text
 
     # Insert ground truth
