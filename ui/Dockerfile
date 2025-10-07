@@ -17,4 +17,4 @@ COPY ./app /app
 EXPOSE 8501
 
 # Run the Streamlit application
-CMD ["streamlit", "run", "main.py"]
+CMD ["streamlit", "run", "Home.py"]

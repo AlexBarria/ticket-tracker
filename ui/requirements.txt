@@ -2,3 +2,6 @@ streamlit
 requests
 streamlit-oauth
 PyJWT
+pandas
+plotly
+python-dotenv

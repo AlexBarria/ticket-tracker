@@ -1,0 +1,389 @@
+[
+  {
+    "query_id": "Q001",
+    "question": "How much did we spend at Bella Pasta?",
+    "reference_answer": "$30.76",
+    "expected_context": "Total spending at Bella Pasta calculated from approved tickets",
+    "query_type": "merchant_spending",
+    "merchant": "Bella Pasta",
+    "language": "en"
+  },
+  {
+    "query_id": "Q002",
+    "question": "¿Cuánto gastamos en Bella Pasta?",
+    "reference_answer": "$30.76",
+    "expected_context": "Gasto total en Bella Pasta calculado de tickets aprobados",
+    "query_type": "merchant_spending",
+    "merchant": "Bella Pasta",
+    "language": "es"
+  },
+  {
+    "query_id": "Q003",
+    "question": "How much did we spend at SASKA'S?",
+    "reference_answer": "$179.94",
+    "expected_context": "Total spending at SASKA'S calculated from approved tickets",
+    "query_type": "merchant_spending",
+    "merchant": "SASKA'S",
+    "language": "en"
+  },
+  {
+    "query_id": "Q004",
+    "question": "¿Cuánto gastamos en SASKA'S?",
+    "reference_answer": "$179.94",
+    "expected_context": "Gasto total en SASKA'S calculado de tickets aprobados",
+    "query_type": "merchant_spending",
+    "merchant": "SASKA'S",
+    "language": "es"
+  },
+  {
+    "query_id": "Q005",
+    "question": "How much did we spend at GOLDEN BOWL TERIYAKI?",
+    "reference_answer": "$15.03",
+    "expected_context": "Total spending at GOLDEN BOWL TERIYAKI calculated from approved tickets",
+    "query_type": "merchant_spending",
+    "merchant": "GOLDEN BOWL TERIYAKI",
+    "language": "en"
+  },
+  {
+    "query_id": "Q006",
+    "question": "¿Cuánto gastamos en GOLDEN BOWL TERIYAKI?",
+    "reference_answer": "$15.03",
+    "expected_context": "Gasto total en GOLDEN BOWL TERIYAKI calculado de tickets aprobados",
+    "query_type": "merchant_spending",
+    "merchant": "GOLDEN BOWL TERIYAKI",
+    "language": "es"
+  },
+  {
+    "query_id": "Q007",
+    "question": "How much did we spend at GREEN FIELD?",
+    "reference_answer": "$56.58",
+    "expected_context": "Total spending at GREEN FIELD calculated from approved tickets",
+    "query_type": "merchant_spending",
+    "merchant": "GREEN FIELD",
+    "language": "en"
+  },
+  {
+    "query_id": "Q008",
+    "question": "¿Cuánto gastamos en GREEN FIELD?",
+    "reference_answer": "$56.58",
+    "expected_context": "Gasto total en GREEN FIELD calculado de tickets aprobados",
+    "query_type": "merchant_spending",
+    "merchant": "GREEN FIELD",
+    "language": "es"
+  },
+  {
+    "query_id": "Q009",
+    "question": "How much did we spend at El Gran Mar de Plata?",
+    "reference_answer": "$5.35",
+    "expected_context": "Total spending at El Gran Mar de Plata calculated from approved tickets",
+    "query_type": "merchant_spending",
+    "merchant": "El Gran Mar de Plata",
+    "language": "en"
+  },
+  {
+    "query_id": "Q010",
+    "question": "¿Cuánto gastamos en El Gran Mar de Plata?",
+    "reference_answer": "$5.35",
+    "expected_context": "Gasto total en El Gran Mar de Plata calculado de tickets aprobados",
+    "query_type": "merchant_spending",
+    "merchant": "El Gran Mar de Plata",
+    "language": "es"
+  },
+  {
+    "query_id": "Q011",
+    "question": "How much did we spend at Grand Lux Cafe?",
+    "reference_answer": "$69.25",
+    "expected_context": "Total spending at Grand Lux Cafe calculated from approved tickets",
+    "query_type": "merchant_spending",
+    "merchant": "Grand Lux Cafe",
+    "language": "en"
+  },
+  {
+    "query_id": "Q012",
+    "question": "¿Cuánto gastamos en Grand Lux Cafe?",
+    "reference_answer": "$69.25",
+    "expected_context": "Gasto total en Grand Lux Cafe calculado de tickets aprobados",
+    "query_type": "merchant_spending",
+    "merchant": "Grand Lux Cafe",
+    "language": "es"
+  },
+  {
+    "query_id": "Q013",
+    "question": "How much did we spend at Akira?",
+    "reference_answer": "$93.58",
+    "expected_context": "Total spending at Akira calculated from approved tickets",
+    "query_type": "merchant_spending",
+    "merchant": "Akira",
+    "language": "en"
+  },
+  {
+    "query_id": "Q014",
+    "question": "¿Cuánto gastamos en Akira?",
+    "reference_answer": "$93.58",
+    "expected_context": "Gasto total en Akira calculado de tickets aprobados",
+    "query_type": "merchant_spending",
+    "merchant": "Akira",
+    "language": "es"
+  },
+  {
+    "query_id": "Q015",
+    "question": "How much did we spend at Katana Sushi?",
+    "reference_answer": "$143.71",
+    "expected_context": "Total spending at Katana Sushi calculated from approved tickets",
+    "query_type": "merchant_spending",
+    "merchant": "Katana Sushi",
+    "language": "en"
+  },
+  {
+    "query_id": "Q016",
+    "question": "¿Cuánto gastamos en Katana Sushi?",
+    "reference_answer": "$143.71",
+    "expected_context": "Gasto total en Katana Sushi calculado de tickets aprobados",
+    "query_type": "merchant_spending",
+    "merchant": "Katana Sushi",
+    "language": "es"
+  },
+  {
+    "query_id": "Q017",
+    "question": "How much did we spend at Dona Mercedes Restaurant?",
+    "reference_answer": "$24.47",
+    "expected_context": "Total spending at Dona Mercedes Restaurant calculated from approved tickets",
+    "query_type": "merchant_spending",
+    "merchant": "Dona Mercedes Restaurant",
+    "language": "en"
+  },
+  {
+    "query_id": "Q018",
+    "question": "¿Cuánto gastamos en Dona Mercedes Restaurant?",
+    "reference_answer": "$24.47",
+    "expected_context": "Gasto total en Dona Mercedes Restaurant calculado de tickets aprobados",
+    "query_type": "merchant_spending",
+    "merchant": "Dona Mercedes Restaurant",
+    "language": "es"
+  },
+  {
+    "query_id": "Q019",
+    "question": "How much did we spend at Taco Bell?",
+    "reference_answer": "$7.61",
+    "expected_context": "Total spending at Taco Bell calculated from approved tickets",
+    "query_type": "merchant_spending",
+    "merchant": "Taco Bell",
+    "language": "en"
+  },
+  {
+    "query_id": "Q020",
+    "question": "¿Cuánto gastamos en Taco Bell?",
+    "reference_answer": "$7.61",
+    "expected_context": "Gasto total en Taco Bell calculado de tickets aprobados",
+    "query_type": "merchant_spending",
+    "merchant": "Taco Bell",
+    "language": "es"
+  },
+  {
+    "query_id": "Q021",
+    "question": "How much did we spend on restaurant?",
+    "reference_answer": "$626.28",
+    "expected_context": "Total spending in Restaurant category from approved tickets",
+    "query_type": "category_spending",
+    "category": "Restaurant",
+    "language": "en"
+  },
+  {
+    "query_id": "Q022",
+    "question": "How many restaurant transactions did we make?",
+    "reference_answer": "10 transactions",
+    "expected_context": "Count of transactions in Restaurant category",
+    "query_type": "category_count",
+    "category": "Restaurant",
+    "language": "en"
+  },
+  {
+    "query_id": "Q023",
+    "question": "Where did we buy Lunch?",
+    "reference_answer": "At GREEN FIELD for $45.90",
+    "expected_context": "Item purchase details from GREEN FIELD receipt",
+    "query_type": "item_location",
+    "item": "Lunch",
+    "language": "en"
+  },
+  {
+    "query_id": "Q024",
+    "question": "Where did we buy Cowboy 16ox Ribeye?",
+    "reference_answer": "At SASKA'S for $45.00",
+    "expected_context": "Item purchase details from SASKA'S receipt",
+    "query_type": "item_location",
+    "item": "Cowboy 16ox Ribeye",
+    "language": "en"
+  },
+  {
+    "query_id": "Q025",
+    "question": "Where did we buy Whistle Pig Rye 10yr?",
+    "reference_answer": "At SASKA'S for $40.00",
+    "expected_context": "Item purchase details from SASKA'S receipt",
+    "query_type": "item_location",
+    "item": "Whistle Pig Rye 10yr",
+    "language": "en"
+  },
+  {
+    "query_id": "Q026",
+    "question": "How many coffee did we purchase?",
+    "reference_answer": "3 items",
+    "expected_context": "Count of 'coffee' items across all approved tickets",
+    "query_type": "item_frequency",
+    "item": "coffee",
+    "language": "en"
+  },
+  {
+    "query_id": "Q027",
+    "question": "How much did we spend on coffee?",
+    "reference_answer": "$8.90",
+    "expected_context": "Total spending on 'coffee' items across all approved tickets",
+    "query_type": "item_spending",
+    "item": "coffee",
+    "language": "en"
+  },
+  {
+    "query_id": "Q028",
+    "question": "How many make it blue did we purchase?",
+    "reference_answer": "2 items",
+    "expected_context": "Count of 'make it blue' items across all approved tickets",
+    "query_type": "item_frequency",
+    "item": "make it blue",
+    "language": "en"
+  },
+  {
+    "query_id": "Q029",
+    "question": "How much did we spend on make it blue?",
+    "reference_answer": "$12.00",
+    "expected_context": "Total spending on 'make it blue' items across all approved tickets",
+    "query_type": "item_spending",
+    "item": "make it blue",
+    "language": "en"
+  },
+  {
+    "query_id": "Q030",
+    "question": "How many chicken parmesan did we purchase?",
+    "reference_answer": "1 items",
+    "expected_context": "Count of 'chicken parmesan' items across all approved tickets",
+    "query_type": "item_frequency",
+    "item": "chicken parmesan",
+    "language": "en"
+  },
+  {
+    "query_id": "Q031",
+    "question": "How much did we spend on chicken parmesan?",
+    "reference_answer": "$17.95",
+    "expected_context": "Total spending on 'chicken parmesan' items across all approved tickets",
+    "query_type": "item_spending",
+    "item": "chicken parmesan",
+    "language": "en"
+  },
+  {
+    "query_id": "Q032",
+    "question": "How many the bacon-cheese burger did we purchase?",
+    "reference_answer": "1 items",
+    "expected_context": "Count of 'the bacon-cheese burger' items across all approved tickets",
+    "query_type": "item_frequency",
+    "item": "the bacon-cheese burger",
+    "language": "en"
+  },
+  {
+    "query_id": "Q033",
+    "question": "How much did we spend on the bacon-cheese burger?",
+    "reference_answer": "$13.95",
+    "expected_context": "Total spending on 'the bacon-cheese burger' items across all approved tickets",
+    "query_type": "item_spending",
+    "item": "the bacon-cheese burger",
+    "language": "en"
+  },
+  {
+    "query_id": "Q034",
+    "question": "How many md. drink did we purchase?",
+    "reference_answer": "1 items",
+    "expected_context": "Count of 'md. drink' items across all approved tickets",
+    "query_type": "item_frequency",
+    "item": "md. drink",
+    "language": "en"
+  },
+  {
+    "query_id": "Q035",
+    "question": "How much did we spend on md. drink?",
+    "reference_answer": "$2.29",
+    "expected_context": "Total spending on 'md. drink' items across all approved tickets",
+    "query_type": "item_spending",
+    "item": "md. drink",
+    "language": "en"
+  },
+  {
+    "query_id": "Q036",
+    "question": "What is the earliest transaction date?",
+    "reference_answer": "2015-04-25",
+    "expected_context": "Earliest transaction date from approved tickets",
+    "query_type": "date_range",
+    "language": "en"
+  },
+  {
+    "query_id": "Q037",
+    "question": "What is the latest transaction date?",
+    "reference_answer": "2019-09-19",
+    "expected_context": "Latest transaction date from approved tickets",
+    "query_type": "date_range",
+    "language": "en"
+  },
+  {
+    "query_id": "Q038",
+    "question": "What was the most expensive item we purchased?",
+    "reference_answer": "Lunch for $45.90 at GREEN FIELD",
+    "expected_context": "Most expensive individual item from all approved tickets",
+    "query_type": "price_comparison",
+    "language": "en"
+  },
+  {
+    "query_id": "Q039",
+    "question": "What was the cheapest item we purchased?",
+    "reference_answer": "Diet coke for $1.50 at Dona Mercedes Restaurant",
+    "expected_context": "Cheapest individual item from all approved tickets",
+    "query_type": "price_comparison",
+    "language": "en"
+  },
+  {
+    "query_id": "Q040",
+    "question": "What is our average transaction amount?",
+    "reference_answer": "$62.63",
+    "expected_context": "Average calculated from all approved ticket transactions",
+    "query_type": "average_spending",
+    "language": "en"
+  },
+  {
+    "query_id": "Q041",
+    "question": "How many transactions do we have in total?",
+    "reference_answer": "10 transactions",
+    "expected_context": "Count of all approved ticket transactions",
+    "query_type": "total_count",
+    "language": "en"
+  },
+  {
+    "query_id": "Q042",
+    "question": "What stores have we shopped at?",
+    "reference_answer": "Akira, Bella Pasta, Dona Mercedes Restaurant, El Gran Mar de Plata, GOLDEN BOWL TERIYAKI, GREEN FIELD, Grand Lux Cafe, Katana Sushi, SASKA'S, Taco Bell",
+    "expected_context": "List of unique merchants from approved tickets",
+    "query_type": "merchant_list",
+    "language": "en"
+  },
+  {
+    "query_id": "Q043",
+    "question": "Which transaction had the highest total?",
+    "reference_answer": "SASKA'S for $179.94",
+    "expected_context": "Transaction with highest total amount from approved tickets",
+    "query_type": "transaction_comparison",
+    "language": "en"
+  },
+  {
+    "query_id": "Q044",
+    "question": "¿Cuál es nuestro gasto total?",
+    "reference_answer": "$626.28",
+    "expected_context": "Suma total de todos los tickets aprobados",
+    "query_type": "total_spending",
+    "language": "es"
+  }
+]

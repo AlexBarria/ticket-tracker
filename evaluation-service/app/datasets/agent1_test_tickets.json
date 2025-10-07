@@ -1,0 +1,301 @@
+[
+  {
+    "test_id": "TEST_001",
+    "filename": "1000-receipt.jpg",
+    "input": {
+      "raw_ocr_text": "greEN FteLD\n5305\nE PaCIFIC CoaST HWY\nLong Beach\nCa 90804\n(562)\n597-0906\nServer\nFranc is\nStat ion :\n3\nOrder\n69923\nDine\nIn\nIe\nB11\nGuests\n2\nCof fee\n3.00\n2 Lunch\n45.90\nCoke\n3.00\nSuB   TOTAL :\n51.90\nTax 1:\n4.60\nToThL:\n456.58\n5/26/2016 12.53:10 PM\nTHANK   YOU !\nTab"
+    },
+    "expected_output": {
+      "merchant_name": "GREEN FIELD",
+      "transaction_date": "2016-05-26",
+      "total_amount": "56.58",
+      "items": [
+        {
+          "description": "Coffee",
+          "price": "3.00"
+        },
+        {
+          "description": "Lunch",
+          "price": "45.90"
+        },
+        {
+          "description": "Coke",
+          "price": "3.00"
+        }
+      ],
+      "category": "Restaurant"
+    }
+  },
+  {
+    "test_id": "TEST_002",
+    "filename": "1001-receipt.jpg",
+    "input": {
+      "raw_ocr_text": "GRAND IIXEAFE\nRoosevelt Field\n0480\nTABLE 101\n#Party 3\nSTEPHEN R\nSvrCk:\n4 16,43 04/25/15\nCoffee\n2.95\n\n17.95\nPr-\nTop Sirloin\n25.,95\n\nCoffee\n2.95\nSub  Tota] :\n63 .75\nTax:\n5.50\nSub Tota]\n69.25\n04/25 17\nTOTAL:\n69\n25\nGratuity Not Included\nSuggested Gratuity:\n20%\n13.85\n188\n12,47\n15*\n10.39\nIt's been\npleasure to serve you.\nThank you for dining with us\nime\n';42"
+    },
+    "expected_output": {
+      "merchant_name": "Grand Lux Cafe",
+      "transaction_date": "2015-04-25",
+      "total_amount": "69.25",
+      "items": [
+        {
+          "description": "Coffee",
+          "price": "2.95"
+        },
+        {
+          "description": "Chicken Parmesan",
+          "price": "17.95"
+        },
+        {
+          "description": "Prime Top Sirloin",
+          "price": "25.95"
+        },
+        {
+          "description": "The Bacon-Cheese Burger",
+          "price": "13.95"
+        },
+        {
+          "description": "Coffee",
+          "price": "2.95"
+        }
+      ],
+      "category": "Restaurant"
+    }
+  },
+  {
+    "test_id": "TEST_003",
+    "filename": "1002-receipt.jpg",
+    "input": {
+      "raw_ocr_text": "For a\nSee\nto HIN\nSioa:,9279-483 \n8\n9\n7230\nTace 8e71 017814\n9\n9/1/2016\nOrder  378752\n8\nCashier -\nDAJA]\nBow]\nCream\n;\nNo Cheese\n0.00\nRg Orange Crsh Fz\n8\nSubTotal\nTax\nVisa\n7.61\nAcct\n7.61\nXXXXXXXX2276\nApproval ;571883\n2\norive ThRu\nThank\nyou for\ng\nHOBILE\n1\nORDERING\n0\nIS beRE\ndowhload theapp\nChance \nKrlitII\nBack\nSurvey _\nPeceipr\n'2211-1806\n(Diganos\nItitttitkktttiiiitititiiiakitkitx\nEspanol )\n1\nPendleton\nLevau\nPike\nsnce\n(317)541\n46226\n1057\n8,25\nPower\nVeg\nSour\n1\nTotal\n{\nvisiting!\n{\n{"
+    },
+    "expected_output": {
+      "merchant_name": "Taco Bell",
+      "transaction_date": "2016-09-01",
+      "total_amount": "7.61",
+      "items": [
+        {
+          "description": "Power Veg Bowl, No Sour Cream, No cheese",
+          "price": "4.99"
+        },
+        {
+          "description": "Orange Crsh Fz",
+          "price": "1.99"
+        }
+      ],
+      "category": "Restaurant"
+    }
+  },
+  {
+    "test_id": "TEST_004",
+    "filename": "1003-receipt.jpg",
+    "input": {
+      "raw_ocr_text": "E] Gran Har d Plata\n10325 Hammocks B1vd\nMiami\nFL 33176\n(305) 386-6638\nServer: Kayra\nStation: 10\nOrder\n8262\nDine In\nBar Tab: Bar Tab\nD\nsettled\nMiller Lite\n5,00\nSUB TOTAL;\n5.00\nSales Tax:\n0.35\ntotaL:\n85,.3\nCash Tendered:\n5.35\nBalance:\n50.00\nTicket\n35 <\nCreated: 4/20/2017 10:13;17 PM\nSETTLED: 4/20/2017 10;13:25 PM\nTHANK   You?\n8\nà246?1\n1\n94\nSòA\nF 9u\n9^ 4(bil 804\nULJ _\nvhksd"
+    },
+    "expected_output": {
+      "merchant_name": "El Gran Mar de Plata",
+      "transaction_date": "2017-04-20",
+      "total_amount": "5.35",
+      "items": [
+        {
+          "description": "Miller Lite",
+          "price": "5.00"
+        }
+      ],
+      "category": "Restaurant"
+    }
+  },
+  {
+    "test_id": "TEST_005",
+    "filename": "1004-receipt.jpg",
+    "input": {
+      "raw_ocr_text": "SOLDEN BOWL TERIYAK I\n8610 GARFIELD\nAVE\nSqUTH GATE,\nCA\n90280\nTEL:\n(5i152 ) 928-8999\nREG\n05-18-2019\n11:19\nAM\nManagier 1\nMC #01\n000141\nORRDER#\nOoO 14 1\n1\n#1\nCHKN\nPLATE\n$9. 39\n+\nAVOCADO\n$1.95\nMD _\nDRINK\n$2. 29\n'KHERE\nTAX\n$1.40\nTOTAL\n415\n03\nCASH\n820. 0O\nCG\n$4.97"
+    },
+    "expected_output": {
+      "merchant_name": "GOLDEN BOWL TERIYAKI",
+      "transaction_date": "2019-05-18",
+      "total_amount": "15.03",
+      "items": [
+        {
+          "description": "Chkn Plate",
+          "price": "9.39"
+        },
+        {
+          "description": "Avocado",
+          "price": "1.95"
+        },
+        {
+          "description": "Md. Drink",
+          "price": "2.29"
+        }
+      ],
+      "category": "Restaurant"
+    }
+  },
+  {
+    "test_id": "TEST_006",
+    "filename": "1005-receipt.jpg",
+    "input": {
+      "raw_ocr_text": "SASKA 'S\n3768 Mission BIvd\nSan Diego\nCA\n92109\n(858) 488-7311\nServer: Sue\n08/15/2017\nTable  103/1\n5:51 PM\nGuests: 2\n10005\nReprint #:\nDraft Blackhouse\n7.00\n\"Cowboy\n160z Ribeye\n45.00\nMake It Blue\n5.00\nAdd Lobster\n21,00\nCK Manhattan (2 @5,00)\n10,00\nWhistle Pig Rye IOyr\n(2 @20,00)\n40,00\n(2)BMOD Up\n\"Duke\n16oz   Top Sirloin\n34,00\nMake It Blue\n5,00\nSubtota]\n167,00\n12,94\nTota]\n179,94\nBa lance\nDue\n179.94\nSUGGESTED TIP\nBEFORE discounts\n188   =830,06\n20x  =033,40\n228  =036,74\nTax"
+    },
+    "expected_output": {
+      "merchant_name": "SASKA'S",
+      "transaction_date": "2017-08-17",
+      "total_amount": "179.94",
+      "items": [
+        {
+          "description": "Draft Blackhouse",
+          "price": "7.00"
+        },
+        {
+          "description": "Cowboy 16ox Ribeye",
+          "price": "45.00"
+        },
+        {
+          "description": "Make It Blue",
+          "price": "7.00"
+        },
+        {
+          "description": "Add Lobster",
+          "price": "21.00"
+        },
+        {
+          "description": "CK Manhattan",
+          "price": "10.00"
+        },
+        {
+          "description": "Whistle Pig Rye 10yr",
+          "price": "40.00"
+        },
+        {
+          "description": "Duke 16oz Top Sirloin",
+          "price": "34.00"
+        },
+        {
+          "description": "Make It Blue",
+          "price": "5.00"
+        }
+      ],
+      "category": "Restaurant"
+    }
+  },
+  {
+    "test_id": "TEST_007",
+    "filename": "1006-receipt.jpg",
+    "input": {
+      "raw_ocr_text": "Akira\nNY 12077\n618-414-8880\nnmwakil\n'ehqroupseq& _\n#37 PICKUP\nPhll\nITEM\nFícñk Steakikj\nMed\nDeluxe\nGlenmont Rol\n515.85\nPnilly\n36.50\nSp Tuna\nSalmonL\n55.50\nutadle\nUnpald\nOlonrtonl\nChe'\n521705\nNooco\nSuh\n820,75\n51300\nsu\nS93SR"
+    },
+    "expected_output": {
+      "merchant_name": "Akira",
+      "transaction_date": "2018-11-16",
+      "total_amount": "93.58",
+      "items": [
+        {
+          "description": "Hi Chk Steak(K) Med",
+          "price": "22.95"
+        },
+        {
+          "description": "Noodle",
+          "price": "2.00"
+        },
+        {
+          "description": "Sushi Deluxe",
+          "price": "20.75"
+        },
+        {
+          "description": "Glenmont Roll",
+          "price": "15.95"
+        },
+        {
+          "description": "Philly R",
+          "price": "6.50"
+        },
+        {
+          "description": "Sp Tuna R",
+          "price": "13.00"
+        },
+        {
+          "description": "Salmon R",
+          "price": "5.50"
+        }
+      ],
+      "category": "Restaurant"
+    }
+  },
+  {
+    "test_id": "TEST_008",
+    "filename": "1007-receipt.jpg",
+    "input": {
+      "raw_ocr_text": "Katana\nsuchi\n2818\nHevitt\nAve\nEverett,\nVa\n98201\n425-512-9361\nJ 4 + K KX X\nserver:\nMicnae|\nc\n05/11/18\n8:47\nPM\nCheck\n#93\nTable\nD2\nHanachi\nCollar\n512 .00\nMega\nPoke\nBow1\n$17 .00\nHanachi\nSashini\n412 -00\nMaguro\nSashini\n811 . 00\nSa ]mon\nSashini\n810 .00\n3\nSockeye\nSaInon\nSashini\n836 . 00\nHamachi\nJapapeno\n812 .00\nSa]non\nCollar\n$10 .00\nEscolar\nSashini\n811 .00\nSubtotal\n8131 .00\nTax\n812.71\nTota]\n8143 .71\nX*x*xxxx\n157,41\nThank\nYou\nfor\nyour\nvisit."
+    },
+    "expected_output": {
+      "merchant_name": "Katana Sushi",
+      "transaction_date": "2018-05-11",
+      "total_amount": "143.71",
+      "items": [
+        {
+          "description": "Hamachi Collar",
+          "price": "12.00"
+        },
+        {
+          "description": "Mega Poke Bowl",
+          "price": "17.00"
+        },
+        {
+          "description": "Hamachi - Sashimi",
+          "price": "12.00"
+        },
+        {
+          "description": "Maguro - Sashimi",
+          "price": "11.00"
+        },
+        {
+          "description": "Salmon - Sashimi",
+          "price": "10.00"
+        },
+        {
+          "description": "3 Sockeye Salmon - Sashimi",
+          "price": "36.00"
+        },
+        {
+          "description": "Hamachi Japapeno",
+          "price": "12.00"
+        },
+        {
+          "description": "Salmon Collar",
+          "price": "10.00"
+        },
+        {
+          "description": "Escolar - Sashimi",
+          "price": "11.00"
+        }
+      ],
+      "category": "Restaurant"
+    }
+  },
+  {
+    "test_id": "TEST_010",
+    "filename": "1009-receipt.jpg",
+    "input": {
+      "raw_ocr_text": "228eHe0,\nVvv .bel y\nPagofeme\n7\nCon\n9009 [\n22\nServer: PH Bar\n08/09/19\nCheck 84\n'78678 88\nSteakTip Skeuers\nRog{ *8eer\nGorgonzola\n823\nSubtota)\n528\nfêta]\n3284\nOro U Out (n Gnb Inn av} ia41 Eate Ior\nDel veryau\nRestaurant Hours"
+    },
+    "expected_output": {
+      "merchant_name": "Bella Pasta",
+      "transaction_date": "2019-09-19",
+      "total_amount": "30.76",
+      "items": [
+        {
+          "description": "Steak Tip Skewers",
+          "price": "12.99"
+        },
+        {
+          "description": "Piatto Gorgonzola",
+          "price": "12.99"
+        },
+        {
+          "description": "Root Beer",
+          "price": "2.50"
+        }
+      ],
+      "category": "Restaurant"
+    }
+  }
+]

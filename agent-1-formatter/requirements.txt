@@ -9,3 +9,8 @@ minio
 PyJWT
 python-multipart
 requests
+opentelemetry-api>=1.26.0
+opentelemetry-sdk>=1.26.0
+opentelemetry-exporter-otlp>=1.26.0
+opentelemetry-instrumentation-fastapi>=0.47b0
+opentelemetry-instrumentation-requests>=0.47b0

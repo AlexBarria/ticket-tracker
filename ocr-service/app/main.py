@@ -1,9 +1,19 @@
+"""
+OCR Service using FastAPI and EasyOCR
+"""
 import io
 import streamlit as st
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from PIL import Image
 import easyocr
 import numpy as np
+import os
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 # --- Model Loading ---
 
@@ -22,6 +32,21 @@ except Exception as e:
 
 app = FastAPI(title="OCR Service")
 
+def _setup_tracing(app: FastAPI) -> None:
+    try:
+        service_name = os.getenv("OTEL_SERVICE_NAME", "ocr-service")
+        endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://phoenix:4317")
+        provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
+        exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True)
+        provider.add_span_processor(BatchSpanProcessor(exporter))
+        trace.set_tracer_provider(provider)
+        FastAPIInstrumentor().instrument_app(app)
+    except Exception:
+        # best effort; do not crash
+        pass
+
+_setup_tracing(app)
+
 @app.get("/")
 def read_root():
     """Health check endpoint."""
@@ -31,6 +56,13 @@ def read_root():
 async def scan_receipt(file: UploadFile = File(...)):
     """
     Receives an image file, extracts text using EasyOCR, and returns the text.
+
+    Args:
+        file (UploadFile): The image file uploaded by the user.
+    Returns:
+        dict: A dictionary containing the filename and extracted text.
+    Raises:
+        HTTPException: If the OCR model is not available or if there is an error processing the
     """
     if not reader:
         raise HTTPException(status_code=500, detail="OCR model is not available.")

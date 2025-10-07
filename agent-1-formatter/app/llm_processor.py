@@ -10,6 +10,11 @@ client = OpenAI()
 def structure_receipt_text(raw_text: str) -> TicketCreate:
     """
     Uses OpenAI's function calling model to extract structured data from raw OCR text.
+
+    Args:
+        raw_text (str): The raw OCR text from a receipt.
+    Returns:
+        TicketCreate: The structured data validated against the TicketCreate schema.
     """
     system_prompt = """
     You are an expert extraction system. Your ONLY job is to read noisy OCR text from a receipt and return a SINGLE valid JSON object that EXACTLY matches the schema below. 
@@ -87,11 +92,16 @@ def structure_receipt_text(raw_text: str) -> TicketCreate:
                 {"role": "user", "content": prompt}
             ]
         )
-        
+
         response_json = json.loads(response.choices[0].message.content)
-        
+
         # Validate the response with our Pydantic model
         validated_data = TicketCreate(**response_json)
+
+        # Track token usage
+        token_usage = response.usage
+        validated_data.token_count = token_usage.total_tokens if token_usage else 0
+
         return validated_data
 
     except Exception as e:

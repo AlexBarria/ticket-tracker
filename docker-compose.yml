@@ -1,6 +1,4 @@
 # This docker-compose file orchestrates all the microservices for the Ticket Tracker app.
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -20,6 +18,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ticket-tracker-net
+
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: phoenix
+    ports:
+      - "6006:6006"   # Phoenix UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP (optional)
+    environment:
+      - PHOENIX_PORT=6006
+    restart: unless-stopped
     networks:
       - ticket-tracker-net
 
@@ -61,18 +72,19 @@ services:
     image: python:3.10  # Use a python image to install dependencies
     container_name: mlflow_server
     command: >
-      sh -c "pip install mlflow boto3 psycopg2-binary &&
-             mlflow server \
-             --host 0.0.0.0 \
-             --port 5001 \
-             --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mlflow_db \
-             --default-artifact-root s3://${MINIO_BUCKET}/mlflow-artifacts"
+      sh -c "pip install --no-cache-dir mlflow boto3 psycopg2-binary &&
+           export MLFLOW_BACKEND_STORE_URI='postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mlflow_db' &&
+           export MLFLOW_DEFAULT_ARTIFACT_ROOT='s3://${MINIO_BUCKET}/mlflow-artifacts' &&
+           python -m uvicorn mlflow.server.fastapi_app:app --host 0.0.0.0 --port 5000"
     ports:
-      - "5001:5001"
+      - "5001:5000"
     environment:
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - MINIO_BUCKET=${MINIO_BUCKET}
     depends_on:
       - postgres
       - create-minio-bucket
@@ -99,14 +111,18 @@ services:
     volumes:
       - ./agent-1-formatter/app:/code/app
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}   
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - MINIO_BUCKET=${MINIO_BUCKET}
+      - OTEL_SERVICE_NAME=agent-1-formatter
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     depends_on:
       - postgres
+      - phoenix
     restart: unless-stopped
     networks:
       - ticket-tracker-net
@@ -117,12 +133,22 @@ services:
     ports:
       - "8003:8000"
     volumes:
-      - ./agent-2-rag:/app
+      - ./agent-2-rag/app:/app
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AGENT_MAX_RECURSION=${AGENT_MAX_RECURSION:-10}
+      - AGENT_MAX_TOOL_CALLS=${AGENT_MAX_TOOL_CALLS:-3}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - WEB_AGENT_URL=http://tool-web:8000/search
+      - GUARDRAILS_URL=http://guardrails:8000/validate
+      - GUARDRAILS_ENABLED=${GUARDRAILS_ENABLED:-false}
+      - OTEL_SERVICE_NAME=agent-2-rag
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     depends_on:
       - postgres
+      - tool-web
+      - phoenix
     restart: unless-stopped
     networks:
       - ticket-tracker-net
@@ -135,12 +161,70 @@ services:
     volumes:
       - ./ui/app:/app
     environment:
-      - AGENT_2_API_URL=http://agent-2-rag:8000
       - AUTH0_DOMAIN=${AUTH0_DOMAIN}
       - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
       - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
     depends_on:
       - agent-2-rag
+      - evaluation-service
+    restart: unless-stopped
+    networks:
+      - ticket-tracker-net
+
+  tool-web:
+    build: ./tool-web
+    container_name: tool_web
+    ports:
+      - "8004:8000"
+    environment:
+      - WEB_SEARCH_PROVIDER=${WEB_SEARCH_PROVIDER:-tavily}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}   
+      - OPENAI_MODEL=${OPENAI_MODEL}      
+      - OTEL_SERVICE_NAME=tool-web
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    networks:
+      - ticket-tracker-net
+
+  guardrails:
+    build:
+      context: ./guardrails
+      args:
+        GUARDRAILS_ENABLED: ${GUARDRAILS_ENABLED:-false}
+        GUARDRAILS_TOKEN: ${GUARDRAILS_TOKEN}
+    container_name: guardrails
+    environment:
+      - OTEL_SERVICE_NAME=guardrails
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    ports:
+      - "8005:8000"
+    networks:
+      - ticket-tracker-net
+
+  evaluation-service:
+    build: ./evaluation-service
+    container_name: evaluation_service
+    ports:
+      - "8006:8006"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      - AGENT_2_URL=http://agent-2-rag:8000
+      - EVAL_SCHEDULE_CRON=${EVAL_SCHEDULE_CRON:-0 2 * * *}
+      - EVAL_BATCH_SIZE=${EVAL_BATCH_SIZE:-5}
+      - EVAL_TIMEOUT=${EVAL_TIMEOUT:-30}
+      - OTEL_SERVICE_NAME=evaluation-service
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=phoenix:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    depends_on:
+      postgres:
+        condition: service_healthy
+      agent-2-rag:
+        condition: service_started
+      phoenix:
+        condition: service_started
     restart: unless-stopped
     networks:
       - ticket-tracker-net
